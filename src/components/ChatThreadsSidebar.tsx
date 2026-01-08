@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, MessageSquare, Calendar, HelpCircle, Trash2, X } from 'lucide-react';
+import { Plus, MessageSquare, Calendar, HelpCircle, Trash2, X, Pencil, Check, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -17,8 +17,9 @@ interface ChatThreadsSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   currentThreadId: string | null;
-  onSelectThread: (threadId: string | null) => void;
+  onSelectThread: (threadId: string | null, type: 'plan' | 'advice' | 'general') => void;
   onNewThread: (type: 'plan' | 'advice' | 'general') => void;
+  activePlanId?: string | null;
 }
 
 const typeIcons = {
@@ -38,11 +39,14 @@ export function ChatThreadsSidebar({
   onClose, 
   currentThreadId, 
   onSelectThread,
-  onNewThread 
+  onNewThread,
+  activePlanId
 }: ChatThreadsSidebarProps) {
   const { user } = useAuth();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
 
   useEffect(() => {
     if (user && isOpen) {
@@ -62,6 +66,7 @@ export function ChatThreadsSidebar({
     if (!error && data) {
       setThreads(data.map(t => ({
         ...t,
+        title: t.title || 'New Chat',
         type: (t.type as 'plan' | 'advice' | 'general') || 'general'
       })));
     }
@@ -79,24 +84,50 @@ export function ChatThreadsSidebar({
     
     setThreads(prev => prev.filter(t => t.id !== threadId));
     if (currentThreadId === threadId) {
-      onSelectThread(null);
+      onSelectThread(null, 'general');
     }
+  };
+
+  const startEditing = (thread: ChatThread, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(thread.id);
+    setEditTitle(thread.title);
+  };
+
+  const saveTitle = async (threadId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!editTitle.trim()) return;
+    
+    await supabase
+      .from('plan_conversations')
+      .update({ title: editTitle.trim() })
+      .eq('id', threadId);
+    
+    setThreads(prev => prev.map(t => 
+      t.id === threadId ? { ...t, title: editTitle.trim() } : t
+    ));
+    setEditingId(null);
+  };
+
+  const handleThreadClick = (thread: ChatThread) => {
+    onSelectThread(thread.id, thread.type);
+    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - higher z-index than chat overlay */}
       <div 
-        className="fixed inset-0 bg-black/60 z-40"
+        className="fixed inset-0 bg-black/60 z-[60]"
         onClick={onClose}
       />
       
-      {/* Sidebar */}
-      <div className="fixed left-0 top-0 bottom-0 w-80 bg-background border-r border-border z-50 flex flex-col">
+      {/* Sidebar - higher z-index than backdrop */}
+      <div className="fixed left-0 top-0 bottom-0 w-80 bg-background border-r border-border z-[70] flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
+        <div className="p-4 border-b border-border flex items-center justify-between safe-top">
           <h2 className="font-display font-bold text-lg">Conversations</h2>
           <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg">
             <X className="w-5 h-5" />
@@ -141,13 +172,12 @@ export function ChatThreadsSidebar({
           ) : (
             threads.map(thread => {
               const Icon = typeIcons[thread.type];
+              const isActivePlanThread = thread.plan_id && thread.plan_id === activePlanId;
+              
               return (
                 <button
                   key={thread.id}
-                  onClick={() => {
-                    onSelectThread(thread.id);
-                    onClose();
-                  }}
+                  onClick={() => handleThreadClick(thread)}
                   className={cn(
                     "w-full flex items-start gap-3 p-3 rounded-xl text-left transition-colors group",
                     currentThreadId === thread.id 
@@ -155,19 +185,66 @@ export function ChatThreadsSidebar({
                       : "hover:bg-secondary"
                   )}
                 >
-                  <Icon className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{thread.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {typeLabels[thread.type]} · {format(new Date(thread.updated_at), 'MMM d')}
-                    </p>
+                  <div className="relative shrink-0">
+                    <Icon className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                    {isActivePlanThread && (
+                      <Crown className="w-3 h-3 text-yellow-500 absolute -top-1.5 -right-1.5" />
+                    )}
                   </div>
-                  <button
-                    onClick={(e) => deleteThread(thread.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 rounded transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                  </button>
+                  <div className="flex-1 min-w-0">
+                    {editingId === thread.id ? (
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveTitle(thread.id);
+                          if (e.key === 'Escape') setEditingId(null);
+                        }}
+                        className="w-full text-sm font-medium bg-secondary px-2 py-1 rounded border border-border focus:outline-none focus:border-primary"
+                        autoFocus
+                        style={{ fontSize: '16px' }}
+                      />
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                          {thread.title}
+                          {isActivePlanThread && (
+                            <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded-full font-semibold">
+                              ACTIVE
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {typeLabels[thread.type]} · {format(new Date(thread.updated_at), 'MMM d')}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    {editingId === thread.id ? (
+                      <button
+                        onClick={(e) => saveTitle(thread.id, e)}
+                        className="p-1 hover:bg-primary/20 rounded"
+                      >
+                        <Check className="w-3.5 h-3.5 text-primary" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => startEditing(thread, e)}
+                        className="p-1 hover:bg-secondary rounded"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => deleteThread(thread.id, e)}
+                      className="p-1 hover:bg-destructive/20 rounded"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </button>
+                  </div>
                 </button>
               );
             })

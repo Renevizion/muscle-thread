@@ -148,14 +148,15 @@ const Index = () => {
     setShowChat(true);
   };
 
-  const handleSelectThread = (threadId: string | null) => {
+  const handleSelectThread = (threadId: string | null, type: 'plan' | 'advice' | 'general') => {
     setCurrentThreadId(threadId);
+    setThreadType(type);
     setChatKey(prev => prev + 1);
     setOnboardingData(null);
     if (threadId) {
       setChatTitle('Loading...');
-      // Title will be updated when chat loads
     }
+    setShowChat(true);
   };
 
   const handleMonthlyCreateNew = () => {
@@ -216,6 +217,7 @@ const Index = () => {
         currentThreadId={currentThreadId}
         onSelectThread={handleSelectThread}
         onNewThread={handleNewThread}
+        activePlanId={activePlan?.id}
       />
 
       {/* Main Workout View */}
