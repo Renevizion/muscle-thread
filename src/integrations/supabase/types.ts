@@ -21,6 +21,7 @@ export type Database = {
           messages: Json
           plan_id: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -28,6 +29,7 @@ export type Database = {
           messages?: Json
           plan_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -35,6 +37,7 @@ export type Database = {
           messages?: Json
           plan_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -56,6 +59,7 @@ export type Database = {
           name: string
           plan_data: Json
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -66,6 +70,7 @@ export type Database = {
           name?: string
           plan_data?: Json
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -76,6 +81,7 @@ export type Database = {
           name?: string
           plan_data?: Json
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

@@ -4,9 +4,11 @@ import { WeeklySchedule } from '@/components/WeeklySchedule';
 import { WorkoutView } from '@/components/WorkoutView';
 import { ChatInterface } from '@/components/ChatInterface';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Flame, MessageSquarePlus, X, Dumbbell } from 'lucide-react';
+import { Flame, MessageSquarePlus, X, Dumbbell, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const Index = () => {
   const [selectedDay, setSelectedDay] = useState(1);
@@ -14,21 +16,24 @@ const Index = () => {
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>(defaultPlan);
   const [planName, setPlanName] = useState('Mass Gain');
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress } = useWorkoutProgress();
+  const { user, signOut } = useAuth();
 
   // Load active plan from database on mount
   useEffect(() => {
     const loadActivePlan = async () => {
+      if (!user) return;
+      
       const { data, error } = await supabase
         .from('workout_plans')
         .select('*')
+        .eq('user_id', user.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (data && !error) {
         setPlanName(data.name);
-        // Convert plan_data to WorkoutDay[] format
         const planData = data.plan_data as any[];
         if (planData && planData.length > 0) {
           setWorkoutPlan(planData);
@@ -37,7 +42,7 @@ const Index = () => {
     };
 
     loadActivePlan();
-  }, []);
+  }, [user]);
 
   // Auto-select today's workout on load
   useEffect(() => {
@@ -48,7 +53,6 @@ const Index = () => {
 
   const currentWorkout = workoutPlan.find(d => d.id === selectedDay) || workoutPlan[0];
 
-  // Calculate week progress
   const weekProgress = workoutPlan.reduce((acc, day) => {
     const exerciseCount = day.exercises?.length || 1;
     return acc + getDayProgress(day.id, exerciseCount);
@@ -60,6 +64,11 @@ const Index = () => {
       setPlanName(plan.name);
       setShowChat(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out');
   };
 
   return (
@@ -95,6 +104,13 @@ const Index = () => {
                 className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"
               >
                 <MessageSquarePlus className="w-5 h-5 text-muted-foreground" />
+              </button>
+
+              <button
+                onClick={handleSignOut}
+                className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"
+              >
+                <LogOut className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
           </div>
