@@ -20,6 +20,8 @@ export type Database = {
           id: string
           messages: Json
           plan_id: string | null
+          title: string | null
+          type: string | null
           updated_at: string
           user_id: string | null
         }
@@ -28,6 +30,8 @@ export type Database = {
           id?: string
           messages?: Json
           plan_id?: string | null
+          title?: string | null
+          type?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -36,6 +40,8 @@ export type Database = {
           id?: string
           messages?: Json
           plan_id?: string | null
+          title?: string | null
+          type?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -49,15 +55,64 @@ export type Database = {
           },
         ]
       }
+      workout_logs: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          exercise_name: string
+          id: string
+          logged_at: string
+          notes: string | null
+          plan_id: string | null
+          sets_completed: number | null
+          user_id: string
+          workout_day: string
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          exercise_name: string
+          id?: string
+          logged_at?: string
+          notes?: string | null
+          plan_id?: string | null
+          sets_completed?: number | null
+          user_id: string
+          workout_day: string
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          exercise_name?: string
+          id?: string
+          logged_at?: string
+          notes?: string | null
+          plan_id?: string | null
+          sets_completed?: number | null
+          user_id?: string
+          workout_day?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_logs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_plans: {
         Row: {
           created_at: string
           description: string | null
           duration_weeks: number | null
+          end_date: string | null
           id: string
           is_active: boolean | null
           name: string
           plan_data: Json
+          start_date: string | null
           updated_at: string
           user_id: string | null
         }
@@ -65,10 +120,12 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration_weeks?: number | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           plan_data?: Json
+          start_date?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -76,10 +133,12 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration_weeks?: number | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           plan_data?: Json
+          start_date?: string | null
           updated_at?: string
           user_id?: string | null
         }
