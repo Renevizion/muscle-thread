@@ -1,4 +1,4 @@
-import { workoutPlan, dayLabels } from '@/data/workoutPlan';
+import { WorkoutDay, dayLabels } from '@/data/workoutPlan';
 import { cn } from '@/lib/utils';
 import { Check, Dumbbell, Wind, Moon } from 'lucide-react';
 
@@ -6,16 +6,24 @@ interface WeeklyScheduleProps {
   currentDay: number;
   onSelectDay: (dayId: number) => void;
   getDayProgress: (dayId: number, exerciseCount: number) => number;
+  workoutPlan?: WorkoutDay[];
 }
 
-export function WeeklySchedule({ currentDay, onSelectDay, getDayProgress }: WeeklyScheduleProps) {
+export function WeeklySchedule({ currentDay, onSelectDay, getDayProgress, workoutPlan }: WeeklyScheduleProps) {
   const today = new Date().getDay();
-  const todayIndex = today === 0 ? 6 : today - 1; // Convert to 0-indexed Monday start
+  const todayIndex = today === 0 ? 6 : today - 1;
+
+  // Use provided plan or fall back to default labels
+  const days = workoutPlan || Array.from({ length: 7 }, (_, i) => ({
+    id: i + 1,
+    type: 'training' as const,
+    exercises: []
+  }));
 
   return (
     <div className="px-4 py-3">
       <div className="flex justify-between gap-1">
-        {workoutPlan.map((day, index) => {
+        {days.map((day, index) => {
           const exerciseCount = day.exercises?.length || 1;
           const progress = getDayProgress(day.id, exerciseCount);
           const isToday = index === todayIndex;
