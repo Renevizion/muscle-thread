@@ -318,6 +318,7 @@ const Index = () => {
               toggleExercise={toggleExercise}
               markDayComplete={markDayComplete}
               isToday={selectedDay === todayIndex}
+              todayIndex={todayIndex}
             />
           ) : (
             <div className="px-4 py-12 text-center">

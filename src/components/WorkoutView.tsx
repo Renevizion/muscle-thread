@@ -10,9 +10,15 @@ interface WorkoutViewProps {
   toggleExercise: (dayId: number, exerciseId: string, totalSets: number) => void;
   markDayComplete: (dayId: number) => void;
   isToday: boolean;
+  todayIndex: number;
 }
 
-export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday }: WorkoutViewProps) {
+export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex }: WorkoutViewProps) {
+  const getDisabledText = () => {
+    if (day.id < todayIndex) return 'This day has passed';
+    if (day.id > todayIndex) return 'Not yet available';
+    return 'Mark Day Complete';
+  };
   if (day.type === 'rest') {
     return (
       <div className="px-4 py-6 animate-slide-up">
@@ -42,7 +48,7 @@ export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayC
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
-            {isToday ? 'Mark Day Complete' : 'Only available today'}
+            {isToday ? 'Mark Day Complete' : getDisabledText()}
           </button>
         </div>
       </div>
@@ -92,7 +98,7 @@ export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayC
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
-            {isToday ? 'Mark Day Complete' : 'Only available today'}
+            {isToday ? 'Mark Day Complete' : getDisabledText()}
           </button>
         </div>
       </div>
