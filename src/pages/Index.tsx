@@ -3,6 +3,7 @@ import { workoutPlan as defaultPlan, WorkoutDay } from '@/data/workoutPlan';
 import { WeeklySchedule } from '@/components/WeeklySchedule';
 import { WorkoutView } from '@/components/WorkoutView';
 import { ChatInterface } from '@/components/ChatInterface';
+import { OnboardingFlow, OnboardingData } from '@/components/onboarding/OnboardingFlow';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,15 +14,19 @@ import { toast } from 'sonner';
 const Index = () => {
   const [selectedDay, setSelectedDay] = useState(1);
   const [showChat, setShowChat] = useState(false);
-  const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>(defaultPlan);
-  const [planName, setPlanName] = useState('Mass Gain');
+  const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>([]);
+  const [planName, setPlanName] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress } = useWorkoutProgress();
   const { user, signOut } = useAuth();
 
-  // Load active plan from database on mount
+  // Check if user has an active plan
   useEffect(() => {
     const loadActivePlan = async () => {
       if (!user) return;
+      setIsLoading(true);
       
       const { data, error } = await supabase
         .from('workout_plans')
@@ -37,8 +42,16 @@ const Index = () => {
         const planData = data.plan_data as any[];
         if (planData && planData.length > 0) {
           setWorkoutPlan(planData);
+          setNeedsOnboarding(false);
+        } else {
+          setNeedsOnboarding(true);
         }
+      } else {
+        // No plan found - new user needs onboarding
+        setNeedsOnboarding(true);
       }
+      
+      setIsLoading(false);
     };
 
     loadActivePlan();
@@ -53,16 +66,25 @@ const Index = () => {
 
   const currentWorkout = workoutPlan.find(d => d.id === selectedDay) || workoutPlan[0];
 
-  const weekProgress = workoutPlan.reduce((acc, day) => {
-    const exerciseCount = day.exercises?.length || 1;
-    return acc + getDayProgress(day.id, exerciseCount);
-  }, 0) / workoutPlan.length;
+  const weekProgress = workoutPlan.length > 0 
+    ? workoutPlan.reduce((acc, day) => {
+        const exerciseCount = day.exercises?.length || 1;
+        return acc + getDayProgress(day.id, exerciseCount);
+      }, 0) / workoutPlan.length
+    : 0;
+
+  const handleOnboardingComplete = (data: OnboardingData) => {
+    setOnboardingData(data);
+    setShowChat(true);
+    setNeedsOnboarding(false);
+  };
 
   const handlePlanCreated = (plan: any) => {
     if (plan.days && plan.days.length > 0) {
       setWorkoutPlan(plan.days);
       setPlanName(plan.name);
       setShowChat(false);
+      setOnboardingData(null);
     }
   };
 
@@ -70,6 +92,22 @@ const Index = () => {
     await signOut();
     toast.success('Signed out');
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full bg-gradient-fire flex items-center justify-center shadow-glow animate-pulse">
+          <Dumbbell className="w-5 h-5 text-primary-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  // Onboarding flow for new users
+  if (needsOnboarding && !showChat) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
 
   return (
     <div className="min-h-screen bg-background safe-top">
@@ -87,7 +125,7 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="font-display text-xl font-bold text-foreground">
-                  {planName}
+                  {planName || 'Your Plan'}
                 </h1>
                 <p className="text-xs text-muted-foreground">4-Week Program</p>
               </div>
@@ -125,21 +163,29 @@ const Index = () => {
         </header>
 
         {/* Weekly Schedule */}
-        <WeeklySchedule 
-          currentDay={selectedDay}
-          onSelectDay={setSelectedDay}
-          getDayProgress={getDayProgress}
-          workoutPlan={workoutPlan}
-        />
+        {workoutPlan.length > 0 && (
+          <WeeklySchedule 
+            currentDay={selectedDay}
+            onSelectDay={setSelectedDay}
+            getDayProgress={getDayProgress}
+            workoutPlan={workoutPlan}
+          />
+        )}
 
         {/* Workout Content */}
         <main className="mt-2 pb-20">
-          <WorkoutView
-            day={currentWorkout}
-            getExerciseProgress={getExerciseProgress}
-            toggleExercise={toggleExercise}
-            markDayComplete={markDayComplete}
-          />
+          {currentWorkout ? (
+            <WorkoutView
+              day={currentWorkout}
+              getExerciseProgress={getExerciseProgress}
+              toggleExercise={toggleExercise}
+              markDayComplete={markDayComplete}
+            />
+          ) : (
+            <div className="px-4 py-12 text-center">
+              <p className="text-muted-foreground">No workout plan yet. Chat with your coach to create one!</p>
+            </div>
+          )}
         </main>
       </div>
 
@@ -155,8 +201,8 @@ const Index = () => {
               <MessageSquarePlus className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="font-display font-bold">Build New Plan</h2>
-              <p className="text-xs text-muted-foreground">Chat with your AI coach</p>
+              <h2 className="font-display font-bold">AI Fitness Coach</h2>
+              <p className="text-xs text-muted-foreground">Build & iterate on your plan</p>
             </div>
           </div>
           
@@ -169,7 +215,10 @@ const Index = () => {
         </div>
 
         <div className="h-[calc(100vh-80px)]">
-          <ChatInterface onPlanCreated={handlePlanCreated} />
+          <ChatInterface 
+            onPlanCreated={handlePlanCreated} 
+            initialContext={onboardingData || undefined}
+          />
         </div>
       </div>
     </div>
