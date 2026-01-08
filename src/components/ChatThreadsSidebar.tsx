@@ -47,6 +47,7 @@ export function ChatThreadsSidebar({
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [activePlanThreadId, setActivePlanThreadId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -115,9 +116,71 @@ export function ChatThreadsSidebar({
     onClose();
   };
 
-  const activePlanThreadId = activePlanId
-    ? (threads.find(t => t.plan_id === activePlanId)?.id ?? null)
-    : null;
+  useEffect(() => {
+    const resolveActivePlanThread = async () => {
+      if (!user || !activePlanId) {
+        setActivePlanThreadId(null);
+        return;
+      }
+
+      const candidates = threads.filter(t => t.plan_id === activePlanId);
+      if (candidates.length === 0) {
+        setActivePlanThreadId(null);
+        return;
+      }
+
+      if (candidates.length === 1) {
+        setActivePlanThreadId(candidates[0].id);
+        return;
+      }
+
+      // If multiple chats are linked to the active plan (historical bug), pick the one that
+      // actually contains a generated plan, then auto-clear the others.
+      const ids = candidates.map(c => c.id);
+      const { data } = await supabase
+        .from('plan_conversations')
+        .select('id, messages, updated_at')
+        .eq('user_id', user.id)
+        .in('id', ids);
+
+      if (!data || data.length === 0) return;
+
+      const hasPlanJson = (messages: any) =>
+        Array.isArray(messages) &&
+        messages.some((m: any) => typeof m?.content === 'string' && m.content.includes('WORKOUT_PLAN_JSON'));
+
+      const ranked = [...data].sort((a, b) => {
+        const aScore = hasPlanJson(a.messages) ? 1 : 0;
+        const bScore = hasPlanJson(b.messages) ? 1 : 0;
+        if (aScore !== bScore) return bScore - aScore;
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
+
+      const winner = ranked[0];
+      if (!winner) return;
+
+      setActivePlanThreadId(winner.id);
+
+      await supabase
+        .from('plan_conversations')
+        .update({ plan_id: null })
+        .eq('user_id', user.id)
+        .eq('plan_id', activePlanId)
+        .neq('id', winner.id);
+
+      setThreads(prev =>
+        prev.map(t =>
+          t.plan_id === activePlanId && t.id !== winner.id
+            ? { ...t, plan_id: null }
+            : t
+        )
+      );
+    };
+
+    if (isOpen && threads.length) {
+      resolveActivePlanThread();
+    }
+  }, [user, activePlanId, threads, isOpen]);
 
   return (
     <div
