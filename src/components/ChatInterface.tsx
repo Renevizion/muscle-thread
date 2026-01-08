@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles } from 'lucide-react';
 import { Message, streamChat, parseWorkoutPlan } from '@/lib/streamChat';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -15,6 +16,7 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { user } = useAuth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,7 +26,6 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
     scrollToBottom();
   }, [messages]);
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -61,14 +62,20 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
       onDone: async () => {
         setIsLoading(false);
         
-        // Check if the response contains a complete workout plan
         const plan = parseWorkoutPlan(assistantContent);
-        if (plan) {
+        if (plan && user) {
           try {
-            // Save to database
+            // Deactivate existing plans
+            await supabase
+              .from('workout_plans')
+              .update({ is_active: false })
+              .eq('user_id', user.id);
+
+            // Save new plan
             const { data, error } = await supabase
               .from('workout_plans')
               .insert({
+                user_id: user.id,
                 name: plan.name,
                 description: plan.description,
                 duration_weeks: plan.duration_weeks,
@@ -84,6 +91,7 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
             await supabase
               .from('plan_conversations')
               .insert({
+                user_id: user.id,
                 plan_id: data.id,
                 messages: [...messages, userMsg, { role: 'assistant', content: assistantContent }]
               });
