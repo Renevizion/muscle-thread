@@ -8,15 +8,19 @@ interface ExerciseCardProps {
   setsCompleted: number;
   isComplete: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }
 
-export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onToggle }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onToggle, disabled }: ExerciseCardProps) {
   return (
     <button
-      onClick={onToggle}
+      onClick={disabled ? undefined : onToggle}
+      disabled={disabled}
       className={cn(
-        "w-full text-left bg-gradient-card rounded-xl p-4 transition-all active:scale-[0.98]",
-        isComplete && "opacity-60"
+        "w-full text-left bg-gradient-card rounded-xl p-4 transition-all",
+        !disabled && "active:scale-[0.98]",
+        isComplete && "opacity-60",
+        disabled && "cursor-not-allowed opacity-50"
       )}
       style={{ animationDelay: `${index * 50}ms` }}
     >

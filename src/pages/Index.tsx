@@ -23,7 +23,9 @@ interface ActivePlan {
 }
 
 const Index = () => {
-  const [selectedDay, setSelectedDay] = useState(1);
+  // Calculate today's day index (1-7, Monday=1)
+  const todayIndex = new Date().getDay() === 0 ? 7 : new Date().getDay();
+  const [selectedDay, setSelectedDay] = useState(todayIndex);
   const [showChat, setShowChat] = useState(false);
   const [showThreads, setShowThreads] = useState(false);
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>([]);
@@ -315,6 +317,7 @@ const Index = () => {
               getExerciseProgress={getExerciseProgress}
               toggleExercise={toggleExercise}
               markDayComplete={markDayComplete}
+              isToday={selectedDay === todayIndex}
             />
           ) : (
             <div className="px-4 py-12 text-center">
