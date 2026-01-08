@@ -2,15 +2,17 @@ import { WorkoutDay } from '@/data/workoutPlan';
 import { ExerciseCard } from './ExerciseCard';
 import { RestTimer } from './RestTimer';
 import { Dumbbell, Wind, Moon, Flame, Droplets } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface WorkoutViewProps {
   day: WorkoutDay;
   getExerciseProgress: (dayId: number, exerciseId: string) => { completed: boolean; setsCompleted: number };
   toggleExercise: (dayId: number, exerciseId: string, totalSets: number) => void;
   markDayComplete: (dayId: number) => void;
+  isToday: boolean;
 }
 
-export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete }: WorkoutViewProps) {
+export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday }: WorkoutViewProps) {
   if (day.type === 'rest') {
     return (
       <div className="px-4 py-6 animate-slide-up">
@@ -32,9 +34,15 @@ export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayC
 
           <button
             onClick={() => markDayComplete(day.id)}
-            className="mt-6 w-full py-4 bg-gradient-fire rounded-xl font-display font-semibold text-primary-foreground shadow-glow"
+            disabled={!isToday}
+            className={cn(
+              "mt-6 w-full py-4 rounded-xl font-display font-semibold",
+              isToday 
+                ? "bg-gradient-fire text-primary-foreground shadow-glow" 
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
           >
-            Mark Day Complete
+            {isToday ? 'Mark Day Complete' : 'Only available today'}
           </button>
         </div>
       </div>
@@ -76,9 +84,15 @@ export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayC
 
           <button
             onClick={() => markDayComplete(day.id)}
-            className="mt-6 w-full py-4 bg-gradient-fire rounded-xl font-display font-semibold text-primary-foreground shadow-glow"
+            disabled={!isToday}
+            className={cn(
+              "mt-6 w-full py-4 rounded-xl font-display font-semibold",
+              isToday 
+                ? "bg-gradient-fire text-primary-foreground shadow-glow" 
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
           >
-            Mark Day Complete
+            {isToday ? 'Mark Day Complete' : 'Only available today'}
           </button>
         </div>
       </div>
@@ -126,6 +140,7 @@ export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayC
               exercise={exercise}
               index={index}
               setsCompleted={progress.setsCompleted}
+              disabled={!isToday}
               isComplete={progress.completed}
               onToggle={() => toggleExercise(day.id, exercise.id, exercise.sets)}
             />
