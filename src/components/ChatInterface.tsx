@@ -1,22 +1,30 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles } from 'lucide-react';
+import { Send, Loader2, Sparkles, Check } from 'lucide-react';
 import { Message, streamChat, parseWorkoutPlan } from '@/lib/streamChat';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { OnboardingData } from './onboarding/OnboardingFlow';
 
 interface ChatInterfaceProps {
   onPlanCreated: (plan: any) => void;
+  initialContext?: OnboardingData;
+  conversationId?: string | null;
+  planId?: string | null;
 }
 
-export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
+export function ChatInterface({ onPlanCreated, initialContext, conversationId, planId }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(conversationId || null);
+  const [pendingPlan, setPendingPlan] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { user } = useAuth();
+  const hasLoadedHistory = useRef(false);
+  const hasGeneratedInitialMessage = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,11 +41,169 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
     }
   }, [input]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  // Load conversation history
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!user || hasLoadedHistory.current) return;
+      hasLoadedHistory.current = true;
 
-    const userMsg: Message = { role: 'user', content: input.trim() };
-    setMessages(prev => [...prev, userMsg]);
+      // If we have a specific conversation ID, load that
+      if (conversationId) {
+        const { data } = await supabase
+          .from('plan_conversations')
+          .select('messages')
+          .eq('id', conversationId)
+          .single();
+        
+        if (data?.messages) {
+          setMessages(data.messages as Message[]);
+          setCurrentConversationId(conversationId);
+        }
+        return;
+      }
+
+      // Otherwise load most recent conversation
+      const { data } = await supabase
+        .from('plan_conversations')
+        .select('id, messages')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data?.messages && (data.messages as any[]).length > 0) {
+        setMessages(data.messages as Message[]);
+        setCurrentConversationId(data.id);
+      }
+    };
+
+    loadHistory();
+  }, [user, conversationId]);
+
+  // Auto-generate initial message from onboarding context
+  useEffect(() => {
+    if (initialContext && !hasGeneratedInitialMessage.current && messages.length === 0) {
+      hasGeneratedInitialMessage.current = true;
+      
+      const contextMessage = buildContextMessage(initialContext);
+      sendMessageWithContent(contextMessage);
+    }
+  }, [initialContext, messages.length]);
+
+  const buildContextMessage = (data: OnboardingData): string => {
+    const goalMap: Record<string, string> = {
+      'mass': 'building muscle mass',
+      'strength': 'getting stronger',
+      'fat-loss': 'losing fat while maintaining muscle',
+      'athletic': 'improving athletic performance',
+      'general': 'general fitness and health',
+    };
+
+    const equipmentMap: Record<string, string> = {
+      'full-gym': 'a full commercial gym',
+      'home-equipped': 'a home gym with dumbbells, barbell, bench, and pull-up bar',
+      'minimal': 'minimal equipment (bodyweight and resistance bands)',
+    };
+
+    const focusLabels: Record<string, string> = {
+      'chest': 'chest',
+      'back': 'back',
+      'shoulders': 'shoulders',
+      'arms': 'arms (biceps/triceps)',
+      'legs': 'legs (quads/hamstrings)',
+      'glutes': 'glutes',
+      'calves': 'calves',
+      'traps': 'traps/upper back',
+      'core': 'core/abs',
+      'forearms': 'forearms/grip strength',
+      'pull-ups': 'pull-ups/muscle-ups',
+      'handstand': 'handstands',
+      'pistol-squat': 'pistol squats',
+      'l-sit': 'L-sits',
+      'planche': 'planche/front lever progressions',
+    };
+
+    const constraintLabels: Record<string, string> = {
+      'back-injury': 'back issues/injury history',
+      'shoulder-injury': 'shoulder problems',
+      'knee-injury': 'knee issues',
+      'wrist-injury': 'wrist/elbow issues',
+      'hip-injury': 'hip mobility limitations',
+      'recovery': 'slower recovery needs',
+      'beginner': 'new to lifting (need form focus)',
+      'cardio-poor': 'poor cardiovascular conditioning',
+      'time-limited': 'limited time some days',
+      'travel': 'frequent travel',
+    };
+
+    let message = `I'm ${data.age} years old and my main goal is ${goalMap[data.primaryGoal] || data.primaryGoal}. `;
+    
+    if (data.secondaryGoals.length > 0) {
+      message += `I'm also interested in ${data.secondaryGoals.join(', ')}. `;
+    }
+
+    message += `I have access to ${equipmentMap[data.equipment] || data.equipment}. `;
+    message += `I can train ${data.daysPerWeek} days per week with ${data.sessionLength} minute sessions. `;
+
+    if (data.focusAreas.length > 0) {
+      const focuses = data.focusAreas.map(f => focusLabels[f] || f);
+      message += `I want to especially focus on ${focuses.join(', ')}. `;
+    }
+
+    if (data.constraints.length > 0) {
+      const constraints = data.constraints.map(c => constraintLabels[c] || c);
+      message += `Please keep in mind I have: ${constraints.join(', ')}. `;
+    }
+
+    if (data.additionalNotes.trim()) {
+      message += `Additional notes: ${data.additionalNotes}`;
+    }
+
+    message += '\n\nPlease create a personalized workout plan for me.';
+
+    return message;
+  };
+
+  const saveConversation = async (newMessages: Message[]) => {
+    if (!user) return;
+
+    try {
+      if (currentConversationId) {
+        // Update existing conversation
+        await supabase
+          .from('plan_conversations')
+          .update({ 
+            messages: newMessages,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentConversationId);
+      } else {
+        // Create new conversation
+        const { data, error } = await supabase
+          .from('plan_conversations')
+          .insert({
+            user_id: user.id,
+            plan_id: planId || null,
+            messages: newMessages
+          })
+          .select('id')
+          .single();
+
+        if (data && !error) {
+          setCurrentConversationId(data.id);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to save conversation:', e);
+    }
+  };
+
+  const sendMessageWithContent = async (content: string) => {
+    if (!content.trim() || isLoading) return;
+
+    const userMsg: Message = { role: 'user', content: content.trim() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
@@ -57,51 +223,18 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
     };
 
     await streamChat({
-      messages: [...messages, userMsg],
+      messages: newMessages,
       onDelta: updateAssistant,
       onDone: async () => {
         setIsLoading(false);
         
+        const finalMessages: Message[] = [...newMessages, { role: 'assistant', content: assistantContent }];
+        setMessages(finalMessages);
+        await saveConversation(finalMessages);
+        
         const plan = parseWorkoutPlan(assistantContent);
-        if (plan && user) {
-          try {
-            // Deactivate existing plans
-            await supabase
-              .from('workout_plans')
-              .update({ is_active: false })
-              .eq('user_id', user.id);
-
-            // Save new plan
-            const { data, error } = await supabase
-              .from('workout_plans')
-              .insert({
-                user_id: user.id,
-                name: plan.name,
-                description: plan.description,
-                duration_weeks: plan.duration_weeks,
-                plan_data: plan.days,
-                is_active: true
-              })
-              .select()
-              .single();
-
-            if (error) throw error;
-
-            // Save conversation
-            await supabase
-              .from('plan_conversations')
-              .insert({
-                user_id: user.id,
-                plan_id: data.id,
-                messages: [...messages, userMsg, { role: 'assistant', content: assistantContent }]
-              });
-
-            toast.success('Workout plan saved! Switching to your new plan.');
-            onPlanCreated(plan);
-          } catch (e) {
-            console.error('Failed to save plan:', e);
-            toast.error('Failed to save plan. You can still use it.');
-          }
+        if (plan) {
+          setPendingPlan(plan);
         }
       },
       onError: (error) => {
@@ -109,6 +242,53 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
         toast.error(error);
       }
     });
+  };
+
+  const sendMessage = async () => {
+    await sendMessageWithContent(input);
+  };
+
+  const handleApplyPlan = async () => {
+    if (!pendingPlan || !user) return;
+
+    try {
+      // Deactivate existing plans
+      await supabase
+        .from('workout_plans')
+        .update({ is_active: false })
+        .eq('user_id', user.id);
+
+      // Save new plan
+      const { data, error } = await supabase
+        .from('workout_plans')
+        .insert({
+          user_id: user.id,
+          name: pendingPlan.name,
+          description: pendingPlan.description,
+          duration_weeks: pendingPlan.duration_weeks,
+          plan_data: pendingPlan.days,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Link conversation to plan
+      if (currentConversationId) {
+        await supabase
+          .from('plan_conversations')
+          .update({ plan_id: data.id })
+          .eq('id', currentConversationId);
+      }
+
+      toast.success('Workout plan activated!');
+      setPendingPlan(null);
+      onPlanCreated(pendingPlan);
+    } catch (e) {
+      console.error('Failed to save plan:', e);
+      toast.error('Failed to save plan');
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -128,7 +308,7 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
     <div className="flex flex-col h-full">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !initialContext ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
             <div className="w-16 h-16 rounded-full bg-gradient-fire flex items-center justify-center mb-4 shadow-glow">
               <Sparkles className="w-8 h-8 text-primary-foreground" />
@@ -184,6 +364,25 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Pending Plan Banner */}
+      {pendingPlan && (
+        <div className="px-4 py-3 border-t border-border bg-secondary/50">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-display font-semibold text-sm">Plan ready: {pendingPlan.name}</p>
+              <p className="text-xs text-muted-foreground">Apply it to start your program</p>
+            </div>
+            <button
+              onClick={handleApplyPlan}
+              className="px-4 py-2 bg-gradient-fire text-primary-foreground rounded-xl font-display font-semibold text-sm flex items-center gap-2 shadow-glow"
+            >
+              <Check className="w-4 h-4" />
+              Apply
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="p-4 border-t border-border safe-bottom">
         <div className="flex items-end gap-2 bg-secondary rounded-2xl p-2">
@@ -192,7 +391,7 @@ export function ChatInterface({ onPlanCreated }: ChatInterfaceProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe your fitness goals..."
+            placeholder="Describe your fitness goals or ask to tweak your plan..."
             className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-sm resize-none focus:outline-none px-2 py-2 max-h-[120px]"
             rows={1}
             disabled={isLoading}
