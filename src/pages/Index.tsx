@@ -45,6 +45,31 @@ const Index = () => {
   // Track if we've already loaded once to prevent re-running after plan creation
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
+  // Prevent background scroll when chat overlay or threads drawer is open (fixes “scrolling the app behind the chat”).
+  useEffect(() => {
+    const shouldLock = showChat || showThreads;
+    if (!shouldLock) return;
+
+    const scrollY = window.scrollY;
+    const prevOverflow = document.body.style.overflow;
+    const prevPosition = document.body.style.position;
+    const prevTop = document.body.style.top;
+    const prevWidth = document.body.style.width;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.position = prevPosition;
+      document.body.style.top = prevTop;
+      document.body.style.width = prevWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [showChat, showThreads]);
+
   // Check if user has an active plan (only runs on initial mount)
   useEffect(() => {
     const loadActivePlan = async () => {
@@ -127,6 +152,7 @@ const Index = () => {
         end_date: null,
         duration_weeks: plan.duration_weeks || 4,
       });
+      setShowThreads(false);
       setShowChat(false);
       setOnboardingData(null);
     }
@@ -300,8 +326,9 @@ const Index = () => {
 
       {/* Chat Overlay */}
       <div className={cn(
-        "fixed inset-0 bg-background z-50 transition-transform duration-300",
-        showChat ? "translate-x-0" : "translate-x-full"
+        "fixed inset-0 bg-background z-50 transition-transform duration-300 ease-out overscroll-none",
+        showChat ? "translate-x-0" : "translate-x-full",
+        showThreads && "pointer-events-none"
       )}>
         {/* Chat Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-border safe-top">
@@ -322,7 +349,10 @@ const Index = () => {
           </div>
           
           <button
-            onClick={() => setShowChat(false)}
+            onClick={() => {
+              setShowThreads(false);
+              setShowChat(false);
+            }}
             className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"
           >
             <X className="w-5 h-5 text-muted-foreground" />

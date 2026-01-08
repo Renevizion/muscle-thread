@@ -56,6 +56,7 @@ export function ChatThreadsSidebar({
 
   const loadThreads = async () => {
     if (!user) return;
+    setLoading(true);
     
     const { data, error } = await supabase
       .from('plan_conversations')
@@ -114,18 +115,34 @@ export function ChatThreadsSidebar({
     onClose();
   };
 
-  if (!isOpen) return null;
+  const activePlanThreadId = activePlanId
+    ? (threads.find(t => t.plan_id === activePlanId)?.id ?? null)
+    : null;
 
   return (
-    <>
-      {/* Backdrop - higher z-index than chat overlay */}
-      <div 
-        className="fixed inset-0 bg-black/60 z-[60]"
+    <div
+      className={cn(
+        "fixed inset-0 z-[100] transition-opacity duration-200",
+        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      )}
+      aria-hidden={!isOpen}
+    >
+      {/* Backdrop */}
+      <div
+        className={cn(
+          "absolute inset-0 bg-black/60 transition-opacity duration-200",
+          isOpen ? "opacity-100" : "opacity-0"
+        )}
         onClick={onClose}
       />
-      
-      {/* Sidebar - higher z-index than backdrop */}
-      <div className="fixed left-0 top-0 bottom-0 w-80 bg-background border-r border-border z-[70] flex flex-col">
+
+      {/* Sidebar */}
+      <div
+        className={cn(
+          "absolute left-0 top-0 bottom-0 w-80 bg-background border-r border-border flex flex-col transition-transform duration-300 ease-out",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
         {/* Header */}
         <div className="p-4 border-b border-border flex items-center justify-between safe-top">
           <h2 className="font-display font-bold text-lg">Conversations</h2>
@@ -133,7 +150,7 @@ export function ChatThreadsSidebar({
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         {/* New Chat Buttons */}
         <div className="p-3 space-y-2 border-b border-border">
           <button
@@ -160,9 +177,9 @@ export function ChatThreadsSidebar({
             </button>
           </div>
         </div>
-        
+
         {/* Thread List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-1">
           {loading ? (
             <div className="text-center text-muted-foreground py-8">Loading...</div>
           ) : threads.length === 0 ? (
@@ -172,23 +189,23 @@ export function ChatThreadsSidebar({
           ) : (
             threads.map(thread => {
               const Icon = typeIcons[thread.type];
-              const isActivePlanThread = thread.plan_id && thread.plan_id === activePlanId;
-              
+              const isActivePlanThread = !!activePlanThreadId && thread.id === activePlanThreadId;
+
               return (
                 <button
                   key={thread.id}
                   onClick={() => handleThreadClick(thread)}
                   className={cn(
                     "w-full flex items-start gap-3 p-3 rounded-xl text-left transition-colors group",
-                    currentThreadId === thread.id 
-                      ? "bg-primary/10 border border-primary/20" 
+                    currentThreadId === thread.id
+                      ? "bg-primary/10 border border-primary/20"
                       : "hover:bg-secondary"
                   )}
                 >
                   <div className="relative shrink-0">
                     <Icon className="w-4 h-4 mt-0.5 text-muted-foreground" />
                     {isActivePlanThread && (
-                      <Crown className="w-3 h-3 text-yellow-500 absolute -top-1.5 -right-1.5" />
+                      <Crown className="w-3 h-3 text-warning absolute -top-1.5 -right-1.5" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -211,7 +228,7 @@ export function ChatThreadsSidebar({
                         <p className="text-sm font-medium truncate flex items-center gap-1.5">
                           {thread.title}
                           {isActivePlanThread && (
-                            <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded-full font-semibold">
+                            <span className="text-[10px] bg-warning/20 text-warning px-1.5 py-0.5 rounded-full font-semibold">
                               ACTIVE
                             </span>
                           )}
@@ -251,6 +268,6 @@ export function ChatThreadsSidebar({
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
