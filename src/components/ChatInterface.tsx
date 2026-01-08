@@ -194,7 +194,9 @@ export function ChatInterface({
           .from('plan_conversations')
           .insert({
             user_id: user.id,
-            plan_id: planId || null,
+            // Only link a conversation to a plan once the user explicitly applies a plan.
+            // This prevents multiple chats from accidentally being marked as the “current plan” chat.
+            plan_id: null,
             messages: newMessages,
             type: threadType,
             title: title,
@@ -348,7 +350,7 @@ export function ChatInterface({
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
         {messages.length === 0 && !initialContext ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
             <div className="w-16 h-16 rounded-full bg-gradient-fire flex items-center justify-center mb-4 shadow-glow">
