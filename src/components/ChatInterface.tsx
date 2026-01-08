@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OnboardingData } from './onboarding/OnboardingFlow';
+import ReactMarkdown from 'react-markdown';
 
 interface ChatInterfaceProps {
   onPlanCreated: (plan: any) => void;
@@ -347,7 +348,13 @@ export function ChatInterface({ onPlanCreated, initialContext, conversationId, p
                     : 'bg-secondary text-foreground'
                 )}
               >
-                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                {msg.role === 'assistant' ? (
+                  <div className="prose prose-sm prose-invert max-w-none text-sm [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>*:last-child]:mb-0">
+                    <ReactMarkdown>{msg.content.replace(/```WORKOUT_PLAN_JSON[\s\S]*?```/g, '')}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                )}
               </div>
             </div>
           ))
@@ -383,8 +390,8 @@ export function ChatInterface({ onPlanCreated, initialContext, conversationId, p
         </div>
       )}
 
-      {/* Input */}
-      <div className="p-4 border-t border-border safe-bottom">
+      {/* Input - with extra padding for mobile browsers */}
+      <div className="p-4 pb-8 border-t border-border" style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 1rem))' }}>
         <div className="flex items-end gap-2 bg-secondary rounded-2xl p-2">
           <textarea
             ref={textareaRef}
