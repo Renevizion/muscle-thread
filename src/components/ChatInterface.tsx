@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles, Check } from 'lucide-react';
-import { Message, streamChat, parseWorkoutPlan } from '@/lib/streamChat';
+import { Message, streamChat, parseWorkoutPlan, ThreadType } from '@/lib/streamChat';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -240,6 +240,7 @@ export function ChatInterface({
 
     await streamChat({
       messages: newMessages,
+      threadType: threadType as ThreadType,
       onDelta: updateAssistant,
       onDone: async () => {
         setIsLoading(false);

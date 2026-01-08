@@ -35,8 +35,8 @@ const Index = () => {
   
   // Thread management
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
-  const [threadType, setThreadType] = useState<'plan' | 'advice' | 'general'>('plan');
-  const [chatTitle, setChatTitle] = useState('Build New Plan');
+  const [threadType, setThreadType] = useState<'plan' | 'advice' | 'general'>('advice');
+  const [chatTitle, setChatTitle] = useState('Get Advice');
   const [chatKey, setChatKey] = useState(0); // Force re-render of chat
   
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress } = useWorkoutProgress();
