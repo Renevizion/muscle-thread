@@ -22,10 +22,13 @@ const Index = () => {
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress } = useWorkoutProgress();
   const { user, signOut } = useAuth();
 
-  // Check if user has an active plan
+  // Track if we've already loaded once to prevent re-running after plan creation
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  // Check if user has an active plan (only runs on initial mount)
   useEffect(() => {
     const loadActivePlan = async () => {
-      if (!user) return;
+      if (!user || hasLoadedOnce) return;
       setIsLoading(true);
       
       const { data, error } = await supabase
@@ -51,11 +54,12 @@ const Index = () => {
         setNeedsOnboarding(true);
       }
       
+      setHasLoadedOnce(true);
       setIsLoading(false);
     };
 
     loadActivePlan();
-  }, [user]);
+  }, [user, hasLoadedOnce]);
 
   // Auto-select today's workout on load
   useEffect(() => {
