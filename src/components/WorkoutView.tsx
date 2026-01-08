@@ -11,14 +11,18 @@ interface WorkoutViewProps {
   markDayComplete: (dayId: number) => void;
   isToday: boolean;
   todayIndex: number;
+  isDayComplete: boolean;
 }
 
-export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex }: WorkoutViewProps) {
-  const getDisabledText = () => {
+export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete }: WorkoutViewProps) {
+  const getButtonText = () => {
+    if (isDayComplete) return 'Completed ✓';
+    if (isToday) return 'Mark Day Complete';
     if (day.id < todayIndex) return 'This day has passed';
-    if (day.id > todayIndex) return 'Not yet available';
-    return 'Mark Day Complete';
+    return 'Not yet available';
   };
+
+  const isButtonDisabled = !isToday || isDayComplete;
   if (day.type === 'rest') {
     return (
       <div className="px-4 py-6 animate-slide-up">
@@ -40,15 +44,17 @@ export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayC
 
           <button
             onClick={() => markDayComplete(day.id)}
-            disabled={!isToday}
+            disabled={isButtonDisabled}
             className={cn(
               "mt-6 w-full py-4 rounded-xl font-display font-semibold",
-              isToday 
-                ? "bg-gradient-fire text-primary-foreground shadow-glow" 
-                : "bg-muted text-muted-foreground cursor-not-allowed"
+              isDayComplete
+                ? "bg-success text-success-foreground"
+                : isToday 
+                  ? "bg-gradient-fire text-primary-foreground shadow-glow" 
+                  : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
-            {isToday ? 'Mark Day Complete' : getDisabledText()}
+            {getButtonText()}
           </button>
         </div>
       </div>
@@ -90,15 +96,17 @@ export function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayC
 
           <button
             onClick={() => markDayComplete(day.id)}
-            disabled={!isToday}
+            disabled={isButtonDisabled}
             className={cn(
               "mt-6 w-full py-4 rounded-xl font-display font-semibold",
-              isToday 
-                ? "bg-gradient-fire text-primary-foreground shadow-glow" 
-                : "bg-muted text-muted-foreground cursor-not-allowed"
+              isDayComplete
+                ? "bg-success text-success-foreground"
+                : isToday 
+                  ? "bg-gradient-fire text-primary-foreground shadow-glow" 
+                  : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
-            {isToday ? 'Mark Day Complete' : getDisabledText()}
+            {getButtonText()}
           </button>
         </div>
       </div>
