@@ -390,16 +390,22 @@ export function ChatInterface({ onPlanCreated, initialContext, conversationId, p
         </div>
       )}
 
-      {/* Input - with extra padding for mobile browsers */}
-      <div className="p-4 pb-8 border-t border-border" style={{ paddingBottom: 'max(2rem, calc(env(safe-area-inset-bottom) + 1rem))' }}>
+      {/* Input - fixed at bottom with proper safe area handling */}
+      <div 
+        className="sticky bottom-0 left-0 right-0 p-4 border-t border-border bg-background"
+        style={{ 
+          paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+        }}
+      >
         <div className="flex items-end gap-2 bg-secondary rounded-2xl p-2">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe your fitness goals or ask to tweak your plan..."
-            className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-sm resize-none focus:outline-none px-2 py-2 max-h-[120px]"
+            placeholder="Describe your fitness goals..."
+            className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground resize-none focus:outline-none px-2 py-2 max-h-[120px]"
+            style={{ fontSize: '16px' }}
             rows={1}
             disabled={isLoading}
           />
