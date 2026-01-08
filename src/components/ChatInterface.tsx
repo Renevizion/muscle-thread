@@ -293,17 +293,25 @@ export function ChatInterface({
 
       if (error) throw error;
 
-      // Link conversation to plan
+      // Link conversation to plan (and ensure there is only ONE “current plan chat”)
       if (currentConversationId) {
         await supabase
           .from('plan_conversations')
           .update({ plan_id: data.id })
           .eq('id', currentConversationId);
+
+        // Clear any other conversations that were incorrectly linked to this plan
+        await supabase
+          .from('plan_conversations')
+          .update({ plan_id: null })
+          .eq('user_id', user.id)
+          .eq('plan_id', data.id)
+          .neq('id', currentConversationId);
       }
 
       toast.success('Workout plan activated!');
       setPendingPlan(null);
-      onPlanCreated(pendingPlan);
+      onPlanCreated({ ...pendingPlan, id: data.id });
     } catch (e) {
       console.error('Failed to save plan:', e);
       toast.error('Failed to save plan');
