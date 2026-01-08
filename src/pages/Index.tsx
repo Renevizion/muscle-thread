@@ -4,21 +4,41 @@ import { WeeklySchedule } from '@/components/WeeklySchedule';
 import { WorkoutView } from '@/components/WorkoutView';
 import { ChatInterface } from '@/components/ChatInterface';
 import { OnboardingFlow, OnboardingData } from '@/components/onboarding/OnboardingFlow';
+import { ChatThreadsSidebar } from '@/components/ChatThreadsSidebar';
+import { MonthlyPrompt } from '@/components/MonthlyPrompt';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Flame, MessageSquarePlus, X, Dumbbell, LogOut } from 'lucide-react';
+import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+interface ActivePlan {
+  id: string;
+  name: string;
+  plan_data: any[];
+  start_date: string | null;
+  end_date: string | null;
+  duration_weeks: number | null;
+}
 
 const Index = () => {
   const [selectedDay, setSelectedDay] = useState(1);
   const [showChat, setShowChat] = useState(false);
+  const [showThreads, setShowThreads] = useState(false);
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>([]);
   const [planName, setPlanName] = useState('');
+  const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
+  
+  // Thread management
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  const [threadType, setThreadType] = useState<'plan' | 'advice' | 'general'>('plan');
+  const [chatTitle, setChatTitle] = useState('Build New Plan');
+  const [chatKey, setChatKey] = useState(0); // Force re-render of chat
+  
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress } = useWorkoutProgress();
   const { user, signOut } = useAuth();
 
@@ -41,6 +61,14 @@ const Index = () => {
         .maybeSingle();
 
       if (data && !error) {
+        setActivePlan({
+          id: data.id,
+          name: data.name,
+          plan_data: data.plan_data as any[],
+          start_date: data.start_date,
+          end_date: data.end_date,
+          duration_weeks: data.duration_weeks,
+        });
         setPlanName(data.name);
         const planData = data.plan_data as any[];
         if (planData && planData.length > 0) {
@@ -79,6 +107,10 @@ const Index = () => {
 
   const handleOnboardingComplete = (data: OnboardingData) => {
     setOnboardingData(data);
+    setThreadType('plan');
+    setChatTitle('Build New Plan');
+    setCurrentThreadId(null);
+    setChatKey(prev => prev + 1);
     setShowChat(true);
     setNeedsOnboarding(false);
   };
@@ -87,9 +119,61 @@ const Index = () => {
     if (plan.days && plan.days.length > 0) {
       setWorkoutPlan(plan.days);
       setPlanName(plan.name);
+      setActivePlan({
+        id: plan.id || '',
+        name: plan.name,
+        plan_data: plan.days,
+        start_date: null,
+        end_date: null,
+        duration_weeks: plan.duration_weeks || 4,
+      });
       setShowChat(false);
       setOnboardingData(null);
     }
+  };
+
+  const handleNewThread = (type: 'plan' | 'advice' | 'general') => {
+    setThreadType(type);
+    setCurrentThreadId(null);
+    setChatKey(prev => prev + 1);
+    setOnboardingData(null);
+    
+    const titles = {
+      plan: 'Build New Plan',
+      advice: 'Get Advice',
+      general: 'General Chat',
+    };
+    setChatTitle(titles[type]);
+    setShowThreads(false);
+    setShowChat(true);
+  };
+
+  const handleSelectThread = (threadId: string | null) => {
+    setCurrentThreadId(threadId);
+    setChatKey(prev => prev + 1);
+    setOnboardingData(null);
+    if (threadId) {
+      setChatTitle('Loading...');
+      // Title will be updated when chat loads
+    }
+  };
+
+  const handleMonthlyCreateNew = () => {
+    handleNewThread('plan');
+  };
+
+  const handleMonthlyRevise = () => {
+    setThreadType('plan');
+    setCurrentThreadId(null);
+    setChatKey(prev => prev + 1);
+    // Pre-load context about current plan for revision
+    setOnboardingData(null);
+    setChatTitle('Revise Plan');
+    setShowChat(true);
+  };
+
+  const handleMonthlyContinue = () => {
+    toast.success('Plan extended for another month!');
   };
 
   const handleSignOut = async () => {
@@ -115,6 +199,25 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background safe-top">
+      {/* Monthly Prompt */}
+      {activePlan && (
+        <MonthlyPrompt
+          currentPlan={activePlan}
+          onCreateNew={handleMonthlyCreateNew}
+          onRevise={handleMonthlyRevise}
+          onContinue={handleMonthlyContinue}
+        />
+      )}
+
+      {/* Chat Threads Sidebar */}
+      <ChatThreadsSidebar
+        isOpen={showThreads}
+        onClose={() => setShowThreads(false)}
+        currentThreadId={currentThreadId}
+        onSelectThread={handleSelectThread}
+        onNewThread={handleNewThread}
+      />
+
       {/* Main Workout View */}
       <div className={cn(
         "transition-transform duration-300",
@@ -201,12 +304,18 @@ const Index = () => {
         {/* Chat Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-border safe-top">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowThreads(true)}
+              className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"
+            >
+              <Menu className="w-5 h-5 text-muted-foreground" />
+            </button>
             <div className="w-10 h-10 rounded-full bg-gradient-fire flex items-center justify-center">
               <MessageSquarePlus className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="font-display font-bold">AI Fitness Coach</h2>
-              <p className="text-xs text-muted-foreground">Build & iterate on your plan</p>
+              <h2 className="font-display font-bold">{chatTitle}</h2>
+              <p className="text-xs text-muted-foreground">Chat with your AI coach</p>
             </div>
           </div>
           
@@ -220,8 +329,13 @@ const Index = () => {
 
         <div className="h-[calc(100vh-80px)]">
           <ChatInterface 
+            key={chatKey}
             onPlanCreated={handlePlanCreated} 
             initialContext={onboardingData || undefined}
+            conversationId={currentThreadId}
+            planId={activePlan?.id}
+            threadType={threadType}
+            onTitleChange={setChatTitle}
           />
         </div>
       </div>

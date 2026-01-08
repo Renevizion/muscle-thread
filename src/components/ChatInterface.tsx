@@ -13,9 +13,18 @@ interface ChatInterfaceProps {
   initialContext?: OnboardingData;
   conversationId?: string | null;
   planId?: string | null;
+  threadType?: 'plan' | 'advice' | 'general';
+  onTitleChange?: (title: string) => void;
 }
 
-export function ChatInterface({ onPlanCreated, initialContext, conversationId, planId }: ChatInterfaceProps) {
+export function ChatInterface({ 
+  onPlanCreated, 
+  initialContext, 
+  conversationId, 
+  planId,
+  threadType = 'general',
+  onTitleChange
+}: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,34 +61,25 @@ export function ChatInterface({ onPlanCreated, initialContext, conversationId, p
       if (conversationId) {
         const { data } = await supabase
           .from('plan_conversations')
-          .select('messages')
+          .select('messages, title, type')
           .eq('id', conversationId)
           .single();
         
         if (data?.messages) {
           setMessages(data.messages as Message[]);
           setCurrentConversationId(conversationId);
+          if (data.title && onTitleChange) {
+            onTitleChange(data.title);
+          }
         }
         return;
       }
 
-      // Otherwise load most recent conversation
-      const { data } = await supabase
-        .from('plan_conversations')
-        .select('id, messages')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (data?.messages && (data.messages as any[]).length > 0) {
-        setMessages(data.messages as Message[]);
-        setCurrentConversationId(data.id);
-      }
+      // For new threads, don't load history - start fresh
     };
 
     loadHistory();
-  }, [user, conversationId]);
+  }, [user, conversationId, onTitleChange]);
 
   // Auto-generate initial message from onboarding context
   useEffect(() => {
@@ -165,7 +165,14 @@ export function ChatInterface({ onPlanCreated, initialContext, conversationId, p
     return message;
   };
 
-  const saveConversation = async (newMessages: Message[]) => {
+  const generateTitle = (content: string): string => {
+    // Generate a title from the first user message
+    const firstLine = content.split('\n')[0].slice(0, 50);
+    if (firstLine.length < content.length) return firstLine + '...';
+    return firstLine || 'New Chat';
+  };
+
+  const saveConversation = async (newMessages: Message[], isFirstMessage: boolean = false) => {
     if (!user) return;
 
     try {
@@ -179,19 +186,27 @@ export function ChatInterface({ onPlanCreated, initialContext, conversationId, p
           })
           .eq('id', currentConversationId);
       } else {
-        // Create new conversation
+        // Create new conversation with type and auto-generated title
+        const firstUserMessage = newMessages.find(m => m.role === 'user');
+        const title = firstUserMessage ? generateTitle(firstUserMessage.content) : 'New Chat';
+        
         const { data, error } = await supabase
           .from('plan_conversations')
           .insert({
             user_id: user.id,
             plan_id: planId || null,
-            messages: newMessages
+            messages: newMessages,
+            type: threadType,
+            title: title,
           })
           .select('id')
           .single();
 
         if (data && !error) {
           setCurrentConversationId(data.id);
+          if (onTitleChange) {
+            onTitleChange(title);
+          }
         }
       }
     } catch (e) {
@@ -299,11 +314,35 @@ export function ChatInterface({ onPlanCreated, initialContext, conversationId, p
     }
   };
 
-  const suggestedPrompts = [
-    "I want to build muscle and focus on my legs and traps",
-    "Create a 4-day split for strength and hypertrophy",
-    "I'm a beginner with access to a full gym"
-  ];
+  const suggestedPrompts = threadType === 'plan' 
+    ? [
+        "I want to build muscle and focus on my legs and traps",
+        "Create a 4-day split for strength and hypertrophy",
+        "I'm a beginner with access to a full gym"
+      ]
+    : threadType === 'advice'
+    ? [
+        "How do I improve my squat form?",
+        "What should I eat before a workout?",
+        "I'm feeling fatigued - should I take a rest day?"
+      ]
+    : [
+        "What's the best way to warm up?",
+        "Can you explain progressive overload?",
+        "Tips for staying motivated"
+      ];
+
+  const emptyStateTitle = threadType === 'plan' 
+    ? 'Build Your Plan' 
+    : threadType === 'advice' 
+    ? 'Get Expert Advice' 
+    : 'Ask Anything';
+
+  const emptyStateDescription = threadType === 'plan'
+    ? "Tell me about your fitness goals and I'll create a personalized workout program for you."
+    : threadType === 'advice'
+    ? "Ask me about form, nutrition, recovery, or any fitness-related questions."
+    : "I'm here to help with any questions about your fitness journey.";
 
   return (
     <div className="flex flex-col h-full">
@@ -314,9 +353,9 @@ export function ChatInterface({ onPlanCreated, initialContext, conversationId, p
             <div className="w-16 h-16 rounded-full bg-gradient-fire flex items-center justify-center mb-4 shadow-glow">
               <Sparkles className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h2 className="font-display text-xl font-bold mb-2">Build Your Plan</h2>
+            <h2 className="font-display text-xl font-bold mb-2">{emptyStateTitle}</h2>
             <p className="text-muted-foreground text-sm mb-6 max-w-xs">
-              Tell me about your fitness goals and I'll create a personalized workout program for you.
+              {emptyStateDescription}
             </p>
             
             <div className="space-y-2 w-full max-w-xs">
