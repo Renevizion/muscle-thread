@@ -41,7 +41,7 @@ const Index = () => {
   const [chatTitle, setChatTitle] = useState('Get Advice');
   const [chatKey, setChatKey] = useState(0); // Force re-render of chat
   
-  const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress } = useWorkoutProgress();
+  const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
   const { user, signOut } = useAuth();
 
   // Track if we've already loaded once to prevent re-running after plan creation
@@ -319,6 +319,7 @@ const Index = () => {
               markDayComplete={markDayComplete}
               isToday={selectedDay === todayIndex}
               todayIndex={todayIndex}
+              isDayComplete={isDayComplete(currentWorkout.id, currentWorkout.exercises?.length || 0)}
             />
           ) : (
             <div className="px-4 py-12 text-center">
