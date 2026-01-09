@@ -23,6 +23,34 @@ interface ActivePlan {
 }
 
 const Index = () => {
+  const ONBOARDING_STORAGE_KEY = 'onboarding-data-v1';
+
+  const readSavedOnboarding = (): OnboardingData | null => {
+    try {
+      const raw = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as OnboardingData;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeSavedOnboarding = (data: OnboardingData) => {
+    try {
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // ignore
+    }
+  };
+
+  const clearSavedOnboarding = () => {
+    try {
+      localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  };
+
   // Calculate today's day index (1-7, Monday=1)
   const todayIndex = new Date().getDay() === 0 ? 7 : new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
@@ -34,18 +62,24 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
-  
+  const [savedOnboardingData, setSavedOnboardingData] = useState<OnboardingData | null>(null);
+
   // Thread management
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [threadType, setThreadType] = useState<'plan' | 'advice' | 'general'>('advice');
   const [chatTitle, setChatTitle] = useState('Get Advice');
   const [chatKey, setChatKey] = useState(0); // Force re-render of chat
-  
+
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
   const { user, signOut } = useAuth();
 
   // Track if we've already loaded once to prevent re-running after plan creation
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  useEffect(() => {
+    const saved = readSavedOnboarding();
+    if (saved) setSavedOnboardingData(saved);
+  }, []);
 
   // Prevent background scroll when chat overlay or threads drawer is open (fixes “scrolling the app behind the chat”).
   useEffect(() => {
@@ -77,7 +111,10 @@ const Index = () => {
     const loadActivePlan = async () => {
       if (!user || hasLoadedOnce) return;
       setIsLoading(true);
-      
+
+      const saved = readSavedOnboarding();
+      if (saved) setSavedOnboardingData(saved);
+
       const { data, error } = await supabase
         .from('workout_plans')
         .select('*')
@@ -87,28 +124,31 @@ const Index = () => {
         .limit(1)
         .maybeSingle();
 
-      if (data && !error) {
+      const planData = (data?.plan_data as any[]) || [];
+
+      if (data && !error && Array.isArray(planData) && planData.length > 0) {
         setActivePlan({
           id: data.id,
           name: data.name,
-          plan_data: data.plan_data as any[],
+          plan_data: planData,
           start_date: data.start_date,
           end_date: data.end_date,
           duration_weeks: data.duration_weeks,
         });
         setPlanName(data.name);
-        const planData = data.plan_data as any[];
-        if (planData && planData.length > 0) {
-          setWorkoutPlan(planData);
+        setWorkoutPlan(planData);
+        setNeedsOnboarding(false);
+      } else {
+        // No plan found (or empty plan) — only show onboarding if we truly have no saved context.
+        if (saved) {
           setNeedsOnboarding(false);
+          setThreadType('plan');
+          setChatTitle('Build New Plan');
         } else {
           setNeedsOnboarding(true);
         }
-      } else {
-        // No plan found - new user needs onboarding
-        setNeedsOnboarding(true);
       }
-      
+
       setHasLoadedOnce(true);
       setIsLoading(false);
     };
@@ -132,7 +172,29 @@ const Index = () => {
       }, 0) / workoutPlan.length
     : 0;
 
+  const startPlanChat = (useSavedContext: boolean) => {
+    setThreadType('plan');
+    setChatTitle('Build New Plan');
+    setCurrentThreadId(null);
+    setChatKey(prev => prev + 1);
+    setOnboardingData(useSavedContext ? savedOnboardingData : null);
+    setShowThreads(false);
+    setShowChat(true);
+  };
+
+  const restartOnboarding = () => {
+    clearSavedOnboarding();
+    setSavedOnboardingData(null);
+    setOnboardingData(null);
+    setNeedsOnboarding(true);
+    setShowChat(false);
+    setShowThreads(false);
+  };
+
   const handleOnboardingComplete = (data: OnboardingData) => {
+    writeSavedOnboarding(data);
+    setSavedOnboardingData(data);
+
     setOnboardingData(data);
     setThreadType('plan');
     setChatTitle('Build New Plan');
@@ -323,7 +385,21 @@ const Index = () => {
             />
           ) : (
             <div className="px-4 py-12 text-center">
-              <p className="text-muted-foreground">No workout plan yet. Chat with your coach to create one!</p>
+              <p className="text-muted-foreground">No active plan yet.</p>
+              <div className="mt-4 mx-auto max-w-xs space-y-2">
+                <button
+                  onClick={() => startPlanChat(true)}
+                  className="w-full py-3 rounded-xl bg-gradient-fire text-primary-foreground font-display font-semibold shadow-glow"
+                >
+                  Continue building my plan
+                </button>
+                <button
+                  onClick={restartOnboarding}
+                  className="w-full py-3 rounded-xl bg-secondary text-foreground font-display font-semibold"
+                >
+                  Restart onboarding
+                </button>
+              </div>
             </div>
           )}
         </main>
