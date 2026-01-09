@@ -104,13 +104,34 @@ export function parseWorkoutPlan(content: string): {
   duration_weeks: number;
   days: any[];
 } | null {
-  const match = content.match(/```WORKOUT_PLAN_JSON\s*([\s\S]*?)```/);
-  if (!match) return null;
-  
-  try {
-    return JSON.parse(match[1].trim());
-  } catch (e) {
-    console.error("Failed to parse workout plan:", e);
-    return null;
+  // Preferred format
+  const match = content.match(/```WORKOUT_PLAN_JSON\s*([\s\S]*?)(?:```|$)/);
+  if (match) {
+    try {
+      return JSON.parse(match[1].trim());
+    } catch (e) {
+      console.error("Failed to parse workout plan:", e);
+    }
   }
+
+  // Fallback: sometimes models emit a generic JSON code block.
+  // Try parsing any fenced code block and validate shape.
+  const blockRegex = /```(?:json)?\s*([\s\S]*?)```/gi;
+  for (const m of content.matchAll(blockRegex)) {
+    try {
+      const parsed = JSON.parse((m[1] || '').trim());
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        typeof parsed.name === 'string' &&
+        Array.isArray(parsed.days)
+      ) {
+        return parsed as any;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return null;
 }

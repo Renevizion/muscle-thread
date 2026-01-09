@@ -64,12 +64,20 @@ export function ChatInterface({
           .select('messages, title, type')
           .eq('id', conversationId)
           .single();
-        
+
         if (data?.messages) {
-          setMessages(data.messages as Message[]);
+          const loadedMessages = data.messages as Message[];
+          setMessages(loadedMessages);
           setCurrentConversationId(conversationId);
           if (data.title && onTitleChange) {
             onTitleChange(data.title);
+          }
+
+          // If a plan was generated previously in this conversation, bring back the Apply banner.
+          const lastAssistant = [...loadedMessages].reverse().find(m => m.role === 'assistant');
+          if (lastAssistant) {
+            const plan = parseWorkoutPlan(lastAssistant.content);
+            if (plan) setPendingPlan(plan);
           }
         }
         return;
@@ -81,15 +89,17 @@ export function ChatInterface({
     loadHistory();
   }, [user, conversationId, onTitleChange]);
 
-  // Auto-generate initial message from onboarding context
+  // Auto-generate initial message from onboarding context (only for brand new chats)
   useEffect(() => {
+    if (conversationId) return;
+
     if (initialContext && !hasGeneratedInitialMessage.current && messages.length === 0) {
       hasGeneratedInitialMessage.current = true;
-      
+
       const contextMessage = buildContextMessage(initialContext);
       sendMessageWithContent(contextMessage);
     }
-  }, [initialContext, messages.length]);
+  }, [initialContext, messages.length, conversationId]);
 
   const buildContextMessage = (data: OnboardingData): string => {
     const goalMap: Record<string, string> = {
@@ -400,7 +410,9 @@ export function ChatInterface({
               >
                 {msg.role === 'assistant' ? (
                   <div className="prose prose-sm prose-invert max-w-none text-sm [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:text-lg [&>h2]:text-base [&>h3]:text-sm [&>*:last-child]:mb-0">
-                    <ReactMarkdown>{msg.content.replace(/```WORKOUT_PLAN_JSON[\s\S]*?```/g, '')}</ReactMarkdown>
+                    <ReactMarkdown>
+                      {msg.content.replace(/```WORKOUT_PLAN_JSON[\s\S]*?(?:```|$)/g, '').trim()}
+                    </ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
