@@ -289,19 +289,30 @@ const Index = () => {
 
   const handlePlanCreated = (plan: any) => {
     if (plan.days && plan.days.length > 0) {
-      setWorkoutPlan(plan.days);
-      setPlanName(plan.name);
-      setActivePlan({
+      const newActivePlan: ActivePlan = {
         id: plan.id || '',
         name: plan.name,
         plan_data: plan.days,
         start_date: null,
         end_date: null,
         duration_weeks: plan.duration_weeks || 4,
-      });
+      };
+
+      setWorkoutPlan(plan.days);
+      setPlanName(plan.name);
+      setActivePlan(newActivePlan);
       setShowThreads(false);
       setShowChat(false);
       setOnboardingData(null);
+
+      // Cache the plan so refreshes don't lose it
+      if (user) {
+        writeCachedActivePlan(user.id, newActivePlan);
+      }
+
+      // Clear onboarding data since we now have a plan
+      clearSavedOnboarding();
+      setSavedOnboardingData(null);
     }
   };
 

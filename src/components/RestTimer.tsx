@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -6,7 +6,7 @@ interface RestTimerProps {
   defaultSeconds?: number;
 }
 
-export function RestTimer({ defaultSeconds = 90 }: RestTimerProps) {
+export const RestTimer = forwardRef<HTMLDivElement, RestTimerProps>(function RestTimer({ defaultSeconds = 90 }, ref) {
   const [seconds, setSeconds] = useState(defaultSeconds);
   const [isRunning, setIsRunning] = useState(false);
   const [initialSeconds, setInitialSeconds] = useState(defaultSeconds);
@@ -48,7 +48,7 @@ export function RestTimer({ defaultSeconds = 90 }: RestTimerProps) {
   const presets = [60, 90, 120, 180];
 
   return (
-    <div className="bg-gradient-card rounded-2xl p-4">
+    <div ref={ref} className="bg-gradient-card rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-medium text-muted-foreground">Rest Timer</span>
         <div className="flex gap-1">
@@ -133,4 +133,6 @@ export function RestTimer({ defaultSeconds = 90 }: RestTimerProps) {
       </div>
     </div>
   );
-}
+});
+
+RestTimer.displayName = 'RestTimer';
