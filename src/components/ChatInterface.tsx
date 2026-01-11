@@ -35,6 +35,7 @@ export function ChatInterface({
   const { user } = useAuth();
   const hasLoadedHistory = useRef(false);
   const hasGeneratedInitialMessage = useRef(false);
+  const isSendingRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -93,11 +94,19 @@ export function ChatInterface({
   useEffect(() => {
     if (conversationId) return;
 
-    if (initialContext && !hasGeneratedInitialMessage.current && messages.length === 0) {
+    if (
+      initialContext &&
+      !hasGeneratedInitialMessage.current &&
+      !isSendingRef.current &&
+      messages.length === 0
+    ) {
       hasGeneratedInitialMessage.current = true;
+      isSendingRef.current = true;
 
       const contextMessage = buildContextMessage(initialContext);
-      sendMessageWithContent(contextMessage);
+      sendMessageWithContent(contextMessage).finally(() => {
+        isSendingRef.current = false;
+      });
     }
   }, [initialContext, messages.length, conversationId]);
 
@@ -147,32 +156,60 @@ export function ChatInterface({
       'travel': 'frequent travel',
     };
 
-    let message = `I'm ${data.age} years old and my main goal is ${goalMap[data.primaryGoal] || data.primaryGoal}. `;
-    
-    if (data.secondaryGoals.length > 0) {
-      message += `I'm also interested in ${data.secondaryGoals.join(', ')}. `;
+    const parts: string[] = [];
+
+    // Age
+    if (data.age > 0) {
+      parts.push(`I'm ${data.age} years old.`);
     }
 
-    message += `I have access to ${equipmentMap[data.equipment] || data.equipment}. `;
-    message += `I can train ${data.daysPerWeek} days per week with ${data.sessionLength} minute sessions. `;
+    // Primary goal
+    const goalText = goalMap[data.primaryGoal];
+    if (goalText) {
+      parts.push(`My main goal is ${goalText}.`);
+    }
+    
+    // Secondary goals
+    if (data.secondaryGoals.length > 0) {
+      parts.push(`I'm also interested in ${data.secondaryGoals.join(', ')}.`);
+    }
 
+    // Equipment
+    const equipmentText = equipmentMap[data.equipment];
+    if (equipmentText) {
+      parts.push(`I have access to ${equipmentText}.`);
+    }
+
+    // Schedule
+    if (data.daysPerWeek > 0 && data.sessionLength) {
+      parts.push(`I can train ${data.daysPerWeek} days per week with ${data.sessionLength} minute sessions.`);
+    } else if (data.daysPerWeek > 0) {
+      parts.push(`I can train ${data.daysPerWeek} days per week.`);
+    }
+
+    // Focus areas
     if (data.focusAreas.length > 0) {
       const focuses = data.focusAreas.map(f => focusLabels[f] || f);
-      message += `I want to especially focus on ${focuses.join(', ')}. `;
+      parts.push(`I want to especially focus on ${focuses.join(', ')}.`);
     }
 
+    // Constraints
     if (data.constraints.length > 0) {
       const constraints = data.constraints.map(c => constraintLabels[c] || c);
-      message += `Please keep in mind I have: ${constraints.join(', ')}. `;
+      parts.push(`Please keep in mind I have: ${constraints.join(', ')}.`);
     }
 
-    if (data.additionalNotes.trim()) {
-      message += `Additional notes: ${data.additionalNotes}`;
+    // Additional notes
+    if (data.additionalNotes?.trim()) {
+      parts.push(`Additional notes: ${data.additionalNotes}`);
     }
 
-    message += '\n\nPlease create a personalized workout plan for me.';
+    // If we have almost no info, ask for more
+    if (parts.length < 2) {
+      return "I'd like you to create a personalized workout plan for me. Please ask me any questions you need to design the perfect program.";
+    }
 
-    return message;
+    return parts.join(' ') + '\n\nPlease create a personalized workout plan for me.';
   };
 
   const generateTitle = (content: string): string => {
