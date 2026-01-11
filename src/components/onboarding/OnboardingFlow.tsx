@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -34,9 +34,30 @@ const STEPS = [
   { id: 'constraints', title: 'Considerations', component: ConstraintsStep },
 ];
 
+const ONBOARDING_STORAGE_KEY = 'onboarding-data-v1';
+
+const readSavedOnboarding = (): { data: OnboardingData; step: number } | null => {
+  try {
+    const raw = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const writeSavedOnboarding = (data: OnboardingData, step: number) => {
+  try {
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify({ data, step }));
+  } catch {
+    // ignore
+  }
+};
+
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [data, setData] = useState<OnboardingData>({
+  const saved = readSavedOnboarding();
+  const [currentStep, setCurrentStep] = useState(saved?.step ?? 0);
+  const [data, setData] = useState<OnboardingData>(saved?.data ?? {
     age: 25,
     primaryGoal: '',
     secondaryGoals: [],
@@ -49,8 +70,17 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   });
 
   const updateData = (updates: Partial<OnboardingData>) => {
-    setData(prev => ({ ...prev, ...updates }));
+    setData(prev => {
+      const next = { ...prev, ...updates };
+      writeSavedOnboarding(next, currentStep);
+      return next;
+    });
   };
+
+  // Also persist step changes
+  useEffect(() => {
+    writeSavedOnboarding(data, currentStep);
+  }, [currentStep]);
 
   const canProceed = () => {
     switch (currentStep) {
@@ -126,30 +156,42 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </main>
 
       {/* Navigation */}
-      <div className="px-4 py-4 border-t border-border flex gap-3">
+      <div className="px-4 py-4 border-t border-border flex flex-col gap-3">
+        <div className="flex gap-3">
+          {currentStep > 0 && (
+            <button
+              onClick={handleBack}
+              className="flex-1 py-3 rounded-xl bg-secondary text-foreground font-display font-semibold flex items-center justify-center gap-2"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              Back
+            </button>
+          )}
+          
+          <button
+            onClick={handleNext}
+            disabled={!canProceed()}
+            className={cn(
+              "flex-1 py-3 rounded-xl font-display font-semibold flex items-center justify-center gap-2 transition-all",
+              canProceed()
+                ? "bg-gradient-fire text-primary-foreground shadow-glow"
+                : "bg-muted text-muted-foreground"
+            )}
+          >
+            {currentStep === STEPS.length - 1 ? 'Start Chat' : 'Continue'}
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+        
+        {/* Skip option - always available after at least one step */}
         {currentStep > 0 && (
           <button
-            onClick={handleBack}
-            className="flex-1 py-3 rounded-xl bg-secondary text-foreground font-display font-semibold flex items-center justify-center gap-2"
+            onClick={() => onComplete(data)}
+            className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ChevronLeft className="w-5 h-5" />
-            Back
+            Skip to chat with current info →
           </button>
         )}
-        
-        <button
-          onClick={handleNext}
-          disabled={!canProceed()}
-          className={cn(
-            "flex-1 py-3 rounded-xl font-display font-semibold flex items-center justify-center gap-2 transition-all",
-            canProceed()
-              ? "bg-gradient-fire text-primary-foreground shadow-glow"
-              : "bg-muted text-muted-foreground"
-          )}
-        >
-          {currentStep === STEPS.length - 1 ? 'Start Chat' : 'Continue'}
-          <ChevronRight className="w-5 h-5" />
-        </button>
       </div>
     </div>
   );
