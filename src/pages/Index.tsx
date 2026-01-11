@@ -25,11 +25,17 @@ interface ActivePlan {
 const Index = () => {
   const ONBOARDING_STORAGE_KEY = 'onboarding-data-v1';
 
+  // OnboardingFlow saves { data, step } - we read .data from it
   const readSavedOnboarding = (): OnboardingData | null => {
     try {
       const raw = localStorage.getItem(ONBOARDING_STORAGE_KEY);
       if (!raw) return null;
-      return JSON.parse(raw) as OnboardingData;
+      const parsed = JSON.parse(raw);
+      // Handle both formats: { data, step } from OnboardingFlow or raw OnboardingData
+      if (parsed && typeof parsed === 'object' && 'data' in parsed) {
+        return parsed.data as OnboardingData;
+      }
+      return parsed as OnboardingData;
     } catch {
       return null;
     }
@@ -37,7 +43,8 @@ const Index = () => {
 
   const writeSavedOnboarding = (data: OnboardingData) => {
     try {
-      localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(data));
+      // Save in the same format OnboardingFlow uses
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify({ data, step: 5 }));
     } catch {
       // ignore
     }
