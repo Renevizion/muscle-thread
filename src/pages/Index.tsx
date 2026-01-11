@@ -58,6 +58,49 @@ const Index = () => {
     }
   };
 
+  const ACTIVE_PLAN_CACHE_KEY = 'active-plan-cache-v1';
+
+  const normalizePlanDays = (raw: any): WorkoutDay[] => {
+    if (Array.isArray(raw)) return raw as WorkoutDay[];
+    if (raw && typeof raw === 'object' && Array.isArray(raw.days)) return raw.days as WorkoutDay[];
+    return [];
+  };
+
+  const readCachedActivePlan = (userId: string): ActivePlan | null => {
+    try {
+      const raw = localStorage.getItem(ACTIVE_PLAN_CACHE_KEY);
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw);
+      const userMatch = parsed?.userId === userId;
+      const plan = (parsed?.plan ?? parsed) as ActivePlan | undefined;
+      if (!userMatch || !plan) return null;
+
+      const days = normalizePlanDays((plan as any).plan_data);
+      if (!Array.isArray(days) || days.length === 0) return null;
+
+      return { ...plan, plan_data: days };
+    } catch {
+      return null;
+    }
+  };
+
+  const writeCachedActivePlan = (userId: string, plan: ActivePlan) => {
+    try {
+      localStorage.setItem(ACTIVE_PLAN_CACHE_KEY, JSON.stringify({ userId, plan }));
+    } catch {
+      // ignore
+    }
+  };
+
+  const clearCachedActivePlan = () => {
+    try {
+      localStorage.removeItem(ACTIVE_PLAN_CACHE_KEY);
+    } catch {
+      // ignore
+    }
+  };
+
   // Calculate today's day index (1-7, Monday=1)
   const todayIndex = new Date().getDay() === 0 ? 7 : new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
@@ -117,7 +160,18 @@ const Index = () => {
   useEffect(() => {
     const loadActivePlan = async () => {
       if (!user || hasLoadedOnce) return;
-      setIsLoading(true);
+
+      // Hydrate from cache first so the UI doesn't "lose" the plan during brief auth/network hiccups.
+      const cachedPlan = readCachedActivePlan(user.id);
+      if (cachedPlan) {
+        setActivePlan(cachedPlan);
+        setPlanName(cachedPlan.name);
+        setWorkoutPlan(normalizePlanDays((cachedPlan as any).plan_data));
+        setNeedsOnboarding(false);
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+      }
 
       const saved = readSavedOnboarding();
       if (saved) setSavedOnboardingData(saved);
@@ -131,22 +185,44 @@ const Index = () => {
         .limit(1)
         .maybeSingle();
 
-      const planData = (data?.plan_data as any[]) || [];
+      if (error) {
+        // Don't treat transient errors as "no plan".
+        if (!cachedPlan) {
+          if (saved) {
+            setNeedsOnboarding(false);
+            setThreadType('plan');
+            setChatTitle('Build New Plan');
+          } else {
+            setNeedsOnboarding(true);
+          }
+        }
+        toast.error('Could not load your plan. Retrying later.');
+        setHasLoadedOnce(true);
+        setIsLoading(false);
+        return;
+      }
 
-      if (data && !error && Array.isArray(planData) && planData.length > 0) {
-        setActivePlan({
+      const planDays = normalizePlanDays(data?.plan_data);
+
+      if (data && Array.isArray(planDays) && planDays.length > 0) {
+        const nextActivePlan: ActivePlan = {
           id: data.id,
           name: data.name,
-          plan_data: planData,
+          plan_data: planDays,
           start_date: data.start_date,
           end_date: data.end_date,
           duration_weeks: data.duration_weeks,
-        });
+        };
+
+        setActivePlan(nextActivePlan);
         setPlanName(data.name);
-        setWorkoutPlan(planData);
+        setWorkoutPlan(planDays);
         setNeedsOnboarding(false);
+        writeCachedActivePlan(user.id, nextActivePlan);
       } else {
-        // No plan found (or empty plan) — only show onboarding if we truly have no saved context.
+        // No plan found (or empty plan)
+        clearCachedActivePlan();
+
         if (saved) {
           setNeedsOnboarding(false);
           setThreadType('plan');
