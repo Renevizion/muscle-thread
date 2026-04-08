@@ -511,43 +511,75 @@ const Index = () => {
           </div>
         </header>
 
-        {/* Weekly Schedule */}
+        {/* Tab switcher */}
         {workoutPlan.length > 0 && (
-          <WeeklySchedule 
-            currentDay={selectedDay}
-            onSelectDay={setSelectedDay}
-            getDayProgress={getDayProgress}
-            workoutPlan={workoutPlan}
-          />
+          <div className="px-4 mb-2">
+            <div className="flex gap-1 bg-secondary rounded-xl p-1">
+              <button
+                onClick={() => setActiveTab('workout')}
+                className={cn(
+                  "flex-1 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5",
+                  activeTab === 'workout' ? "bg-background shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                <Dumbbell className="w-4 h-4" />
+                Workout
+              </button>
+              <button
+                onClick={() => setActiveTab('progress')}
+                className={cn(
+                  "flex-1 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5",
+                  activeTab === 'progress' ? "bg-background shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                <TrendingUp className="w-4 h-4" />
+                Progress
+              </button>
+            </div>
+          </div>
         )}
 
-        {/* Workout Content */}
-        <main className="mt-2 pb-20">
-          {currentWorkout ? (
-            <WorkoutView
-              day={currentWorkout}
-              getExerciseProgress={getExerciseProgress}
-              toggleExercise={toggleExercise}
-              markDayComplete={markDayComplete}
-              isToday={selectedDay === todayIndex}
-              todayIndex={todayIndex}
-              isDayComplete={isDayComplete(currentWorkout.id, currentWorkout.exercises?.length || 0)}
-            />
-          ) : (
-            <div className="px-4 py-12 text-center">
-              <p className="text-muted-foreground">No active plan yet.</p>
-              <div className="mt-4 mx-auto max-w-xs space-y-2">
-                <button
-                  onClick={() => startPlanChat(true)}
-                  className="w-full py-3 rounded-xl bg-gradient-fire text-primary-foreground font-display font-semibold shadow-glow"
-                >
-                  Continue building my plan
-                </button>
-                <button
-                  onClick={restartOnboarding}
-                  className="w-full py-3 rounded-xl bg-secondary text-foreground font-display font-semibold"
-                >
-                  Restart onboarding
+        {activeTab === 'workout' ? (
+          <>
+            {/* Weekly Schedule */}
+            {workoutPlan.length > 0 && (
+              <WeeklySchedule 
+                currentDay={selectedDay}
+                onSelectDay={setSelectedDay}
+                getDayProgress={getDayProgress}
+                workoutPlan={workoutPlan}
+              />
+            )}
+
+            {/* Workout Content */}
+            <main className="mt-2 pb-20">
+              {currentWorkout ? (
+                <WorkoutView
+                  day={currentWorkout}
+                  getExerciseProgress={getExerciseProgress}
+                  toggleExercise={toggleExercise}
+                  markDayComplete={markDayComplete}
+                  isToday={selectedDay === todayIndex}
+                  todayIndex={todayIndex}
+                  isDayComplete={isDayComplete(currentWorkout.id, currentWorkout.exercises?.length || 0)}
+                  onLogExercise={(exerciseName, sets) => handleLogExercise(currentWorkout.name, exerciseName, sets)}
+                  getExerciseLogs={(exerciseName) => getExerciseLogSets(currentWorkout.name, exerciseName)}
+                />
+              ) : (
+                <div className="px-4 py-12 text-center">
+                  <p className="text-muted-foreground">No active plan yet.</p>
+                  <div className="mt-4 mx-auto max-w-xs space-y-2">
+                    <button
+                      onClick={() => startPlanChat(true)}
+                      className="w-full py-3 rounded-xl bg-gradient-fire text-primary-foreground font-display font-semibold shadow-glow"
+                    >
+                      Continue building my plan
+                    </button>
+                    <button
+                      onClick={restartOnboarding}
+                      className="w-full py-3 rounded-xl bg-secondary text-foreground font-display font-semibold"
+                    >
+                      Restart onboarding
                 </button>
               </div>
             </div>
