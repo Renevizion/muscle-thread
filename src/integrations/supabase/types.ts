@@ -64,8 +64,10 @@ export type Database = {
           logged_at: string
           notes: string | null
           plan_id: string | null
+          reps_completed: number | null
           sets_completed: number | null
           user_id: string
+          weight_used: number | null
           workout_day: string
         }
         Insert: {
@@ -76,8 +78,10 @@ export type Database = {
           logged_at?: string
           notes?: string | null
           plan_id?: string | null
+          reps_completed?: number | null
           sets_completed?: number | null
           user_id: string
+          weight_used?: number | null
           workout_day: string
         }
         Update: {
@@ -88,8 +92,10 @@ export type Database = {
           logged_at?: string
           notes?: string | null
           plan_id?: string | null
+          reps_completed?: number | null
           sets_completed?: number | null
           user_id?: string
+          weight_used?: number | null
           workout_day?: string
         }
         Relationships: [
