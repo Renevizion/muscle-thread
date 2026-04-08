@@ -165,6 +165,8 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
               disabled={!isToday}
               isComplete={progress.completed}
               onToggle={() => toggleExercise(day.id, exercise.id, exercise.sets)}
+              onLog={(sets) => onLogExercise?.(exercise.name, sets)}
+              savedSets={getExerciseLogs?.(exercise.name)}
             />
           );
         })}
