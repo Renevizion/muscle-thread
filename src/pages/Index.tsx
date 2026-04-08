@@ -580,11 +580,17 @@ const Index = () => {
                       className="w-full py-3 rounded-xl bg-secondary text-foreground font-display font-semibold"
                     >
                       Restart onboarding
-                </button>
-              </div>
-            </div>
-          )}
-        </main>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </main>
+          </>
+        ) : (
+          <main className="mt-2 pb-20">
+            <ProgressCharts planId={activePlan?.id || null} />
+          </main>
+        )}
       </div>
 
       {/* Chat Overlay */}
