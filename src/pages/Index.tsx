@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { workoutPlan as defaultPlan, WorkoutDay } from '@/data/workoutPlan';
 import { WeeklySchedule } from '@/components/WeeklySchedule';
 import { WorkoutView } from '@/components/WorkoutView';
@@ -6,10 +6,11 @@ import { ChatInterface } from '@/components/ChatInterface';
 import { OnboardingFlow, OnboardingData } from '@/components/onboarding/OnboardingFlow';
 import { ChatThreadsSidebar } from '@/components/ChatThreadsSidebar';
 import { MonthlyPrompt } from '@/components/MonthlyPrompt';
+import { ProgressCharts } from '@/components/ProgressCharts';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu } from 'lucide-react';
+import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
