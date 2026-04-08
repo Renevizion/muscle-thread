@@ -119,7 +119,9 @@ const Index = () => {
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [threadType, setThreadType] = useState<'plan' | 'advice' | 'general'>('advice');
   const [chatTitle, setChatTitle] = useState('Get Advice');
-  const [chatKey, setChatKey] = useState(0); // Force re-render of chat
+  const [chatKey, setChatKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<'workout' | 'progress'>('workout');
+  const [exerciseLogs, setExerciseLogs] = useState<Record<string, { reps: number; weight: number }[]>>({});
 
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
   const { user, signOut } = useAuth();
