@@ -5,6 +5,11 @@ import { RestTimer } from './RestTimer';
 import { Dumbbell, Wind, Moon, Flame, Droplets } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface SetLog {
+  reps: number;
+  weight: number;
+}
+
 interface WorkoutViewProps {
   day: WorkoutDay;
   getExerciseProgress: (dayId: number, exerciseId: string) => { completed: boolean; setsCompleted: number };
@@ -13,9 +18,11 @@ interface WorkoutViewProps {
   isToday: boolean;
   todayIndex: number;
   isDayComplete: boolean;
+  onLogExercise?: (exerciseName: string, sets: SetLog[]) => void;
+  getExerciseLogs?: (exerciseName: string) => SetLog[] | undefined;
 }
 
-export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete }, ref) {
+export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs }, ref) {
   const getButtonText = () => {
     if (isDayComplete) return 'Completed ✓';
     if (isToday) return 'Mark Day Complete';
@@ -158,6 +165,8 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
               disabled={!isToday}
               isComplete={progress.completed}
               onToggle={() => toggleExercise(day.id, exercise.id, exercise.sets)}
+              onLog={(sets) => onLogExercise?.(exercise.name, sets)}
+              savedSets={getExerciseLogs?.(exercise.name)}
             />
           );
         })}
