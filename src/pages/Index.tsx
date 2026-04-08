@@ -369,6 +369,59 @@ const Index = () => {
     toast.success('Signed out');
   };
 
+  const handleLogExercise = useCallback(async (workoutDay: string, exerciseName: string, sets: { reps: number; weight: number }[]) => {
+    if (!user || !activePlan) return;
+
+    const totalSets = sets.length;
+    const totalReps = sets.reduce((sum, s) => sum + s.reps, 0);
+    const maxWeight = Math.max(...sets.map(s => s.weight), 0);
+
+    // Upsert into workout_logs
+    const today = new Date().toISOString().split('T')[0];
+    const { data: existing } = await supabase
+      .from('workout_logs')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('plan_id', activePlan.id)
+      .eq('workout_day', workoutDay)
+      .eq('exercise_name', exerciseName)
+      .gte('logged_at', today)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('workout_logs')
+        .update({
+          sets_completed: totalSets,
+          reps_completed: totalReps,
+          weight_used: maxWeight,
+          completed: true,
+        })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('workout_logs')
+        .insert({
+          user_id: user.id,
+          plan_id: activePlan.id,
+          workout_day: workoutDay,
+          exercise_name: exerciseName,
+          sets_completed: totalSets,
+          reps_completed: totalReps,
+          weight_used: maxWeight,
+          completed: true,
+        });
+    }
+
+    // Update local state
+    setExerciseLogs(prev => ({ ...prev, [`${workoutDay}:${exerciseName}`]: sets }));
+    toast.success(`Logged ${exerciseName}`);
+  }, [user, activePlan]);
+
+  const getExerciseLogSets = useCallback((workoutDay: string, exerciseName: string) => {
+    return exerciseLogs[`${workoutDay}:${exerciseName}`];
+  }, [exerciseLogs]);
+
   // Loading state
   if (isLoading) {
     return (
