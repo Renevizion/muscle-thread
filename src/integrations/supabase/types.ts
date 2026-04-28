@@ -55,6 +55,39 @@ export type Database = {
           },
         ]
       }
+      progress_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          storage_path: string
+          taken_at: string
+          user_id: string
+          week_number: number | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          storage_path: string
+          taken_at?: string
+          user_id: string
+          week_number?: number | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          storage_path?: string
+          taken_at?: string
+          user_id?: string
+          week_number?: number | null
+        }
+        Relationships: []
+      }
       workout_logs: {
         Row: {
           completed: boolean | null
