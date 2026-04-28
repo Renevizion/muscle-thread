@@ -41,6 +41,18 @@ export function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const findLatestPlan = (conversationMessages: Message[]) => {
+    for (let i = conversationMessages.length - 1; i >= 0; i -= 1) {
+      const message = conversationMessages[i];
+      if (message.role !== 'assistant') continue;
+
+      const plan = parseWorkoutPlan(message.content);
+      if (plan) return plan;
+    }
+
+    return null;
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -74,12 +86,11 @@ export function ChatInterface({
             onTitleChange(data.title);
           }
 
-          // If a plan was generated previously in this conversation, bring back the Apply banner.
-          const lastAssistant = [...loadedMessages].reverse().find(m => m.role === 'assistant');
-          if (lastAssistant) {
-            const plan = parseWorkoutPlan(lastAssistant.content);
-            if (plan) setPendingPlan(plan);
-          }
+          // If a plan was generated anywhere in this conversation, bring back the Apply banner.
+          // Users often ask follow-up questions after generation, so the newest assistant message
+          // may not be the one containing the hidden plan JSON.
+          const plan = findLatestPlan(loadedMessages);
+          if (plan) setPendingPlan(plan);
         }
         return;
       }
@@ -358,7 +369,14 @@ export function ChatInterface({
 
       toast.success('Workout plan activated!');
       setPendingPlan(null);
-      onPlanCreated({ ...pendingPlan, id: data.id });
+      onPlanCreated({
+        ...pendingPlan,
+        id: data.id,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        duration_weeks: data.duration_weeks,
+        plan_data: data.plan_data,
+      });
     } catch (e) {
       console.error('Failed to save plan:', e);
       toast.error('Failed to save plan');
@@ -403,9 +421,9 @@ export function ChatInterface({
     : "I'm here to help with any questions about your fitness journey.";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
         {messages.length === 0 && !initialContext ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
             <div className="w-16 h-16 rounded-full bg-gradient-fire flex items-center justify-center mb-4 shadow-glow">
@@ -472,15 +490,15 @@ export function ChatInterface({
 
       {/* Pending Plan Banner */}
       {pendingPlan && (
-        <div className="px-4 py-3 border-t border-border bg-secondary/50">
+        <div className="shrink-0 px-4 py-3 border-t border-border bg-secondary/50">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="font-display font-semibold text-sm">Plan ready: {pendingPlan.name}</p>
-              <p className="text-xs text-muted-foreground">Apply it to start your program</p>
+              <p className="text-xs text-muted-foreground">Tap Apply to add it to your week</p>
             </div>
             <button
               onClick={handleApplyPlan}
-              className="px-4 py-2 bg-gradient-fire text-primary-foreground rounded-xl font-display font-semibold text-sm flex items-center gap-2 shadow-glow"
+              className="shrink-0 px-4 py-2 bg-gradient-fire text-primary-foreground rounded-xl font-display font-semibold text-sm flex items-center gap-2 shadow-glow"
             >
               <Check className="w-4 h-4" />
               Apply
@@ -491,7 +509,7 @@ export function ChatInterface({
 
       {/* Input - fixed at bottom with proper safe area handling */}
       <div 
-        className="sticky bottom-0 left-0 right-0 p-4 border-t border-border bg-background"
+        className="shrink-0 p-4 border-t border-border bg-background"
         style={{ 
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
         }}

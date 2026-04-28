@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, RefreshCw, ArrowRight, X, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { format, isAfter, startOfMonth, endOfMonth } from 'date-fns';
+import { format, endOfMonth } from 'date-fns';
 
 interface MonthlyPromptProps {
   currentPlan: any;
@@ -18,11 +18,17 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue }
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    setShowPrompt(false);
+    setDismissed(false);
+    setCompletionRate(null);
     checkMonthlyStatus();
-  }, [currentPlan, user]);
+  }, [currentPlan?.id, currentPlan?.end_date, user?.id]);
 
   const checkMonthlyStatus = async () => {
-    if (!currentPlan || !user) return;
+    if (!currentPlan || !user) {
+      setShowPrompt(false);
+      return;
+    }
 
     // Check if plan has ended or it's a new month
     const endDate = currentPlan.end_date ? new Date(currentPlan.end_date) : null;
@@ -34,8 +40,11 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue }
       if (daysUntilEnd <= 3) {
         await loadCompletionRate();
         setShowPrompt(true);
+        return;
       }
     }
+
+    setShowPrompt(false);
   };
 
   const loadCompletionRate = async () => {
@@ -72,8 +81,8 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue }
   if (!showPrompt || dismissed) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 space-y-5">
+    <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 space-y-5 shadow-card">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -87,7 +96,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue }
           </div>
           <button 
             onClick={() => setDismissed(true)}
-            className="p-1 hover:bg-secondary rounded"
+            className="p-2 hover:bg-secondary rounded"
           >
             <X className="w-5 h-5" />
           </button>
