@@ -7,10 +7,11 @@ import { OnboardingFlow, OnboardingData } from '@/components/onboarding/Onboardi
 import { ChatThreadsSidebar } from '@/components/ChatThreadsSidebar';
 import { MonthlyPrompt } from '@/components/MonthlyPrompt';
 import { ProgressCharts } from '@/components/ProgressCharts';
+import { ProgressPhotos } from '@/components/ProgressPhotos';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp } from 'lucide-react';
+import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -120,7 +121,7 @@ const Index = () => {
   const [threadType, setThreadType] = useState<'plan' | 'advice' | 'general'>('advice');
   const [chatTitle, setChatTitle] = useState('Get Advice');
   const [chatKey, setChatKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<'workout' | 'progress'>('workout');
+  const [activeTab, setActiveTab] = useState<'workout' | 'progress' | 'photos'>('workout');
   const [exerciseLogs, setExerciseLogs] = useState<Record<string, { reps: number; weight: number }[]>>({});
 
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
@@ -538,6 +539,16 @@ const Index = () => {
                 <TrendingUp className="w-4 h-4" />
                 Progress
               </button>
+              <button
+                onClick={() => setActiveTab('photos')}
+                className={cn(
+                  "flex-1 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5",
+                  activeTab === 'photos' ? "bg-background shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                <Camera className="w-4 h-4" />
+                Photos
+              </button>
             </div>
           </div>
         )}
@@ -589,9 +600,13 @@ const Index = () => {
               )}
             </main>
           </>
-        ) : (
+        ) : activeTab === 'progress' ? (
           <main className="mt-2 pb-20">
             <ProgressCharts planId={activePlan?.id || null} />
+          </main>
+        ) : (
+          <main className="mt-2 pb-20">
+            <ProgressPhotos />
           </main>
         )}
       </div>
