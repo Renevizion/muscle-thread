@@ -292,18 +292,21 @@ const Index = () => {
 
   const handlePlanCreated = (plan: any) => {
     if (plan.days && plan.days.length > 0) {
+      const planEndDate = plan.end_date || null;
       const newActivePlan: ActivePlan = {
         id: plan.id || '',
         name: plan.name,
         plan_data: plan.days,
-        start_date: null,
-        end_date: null,
+        start_date: plan.start_date || null,
+        end_date: planEndDate,
         duration_weeks: plan.duration_weeks || 4,
       };
 
       setWorkoutPlan(plan.days);
       setPlanName(plan.name);
       setActivePlan(newActivePlan);
+      setSelectedDay(todayIndex);
+      setActiveTab('workout');
       setShowThreads(false);
       setShowChat(false);
       setOnboardingData(null);
@@ -595,7 +598,7 @@ const Index = () => {
 
       {/* Chat Overlay */}
       <div className={cn(
-        "fixed inset-0 bg-background z-50 transition-transform duration-300 ease-out overscroll-none",
+        "fixed inset-0 bg-background z-50 flex flex-col transition-transform duration-300 ease-out overscroll-none",
         showChat ? "translate-x-0" : "translate-x-full",
         showThreads && "pointer-events-none"
       )}>
@@ -628,7 +631,7 @@ const Index = () => {
           </button>
         </div>
 
-        <div className="h-[calc(100vh-80px)]">
+        <div className="flex-1 min-h-0">
           <ChatInterface 
             key={chatKey}
             onPlanCreated={handlePlanCreated} 
