@@ -36,6 +36,7 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
   if (day.type === 'rest') {
     return (
       <div className="px-4 py-6 animate-slide-up">
+        {banner}
         <div className="bg-gradient-card rounded-2xl p-6 text-center">
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
             <Moon className="w-10 h-10 text-primary" />
@@ -74,6 +75,7 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
   if (day.type === 'conditioning') {
     return (
       <div className="px-4 py-6 animate-slide-up">
+        {banner}
         <div className="bg-gradient-card rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
