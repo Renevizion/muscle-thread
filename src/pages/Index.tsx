@@ -253,14 +253,32 @@ const Index = () => {
     setSelectedDay(dayIndex);
   }, []);
 
-  const currentWorkout = workoutPlan.find(d => d.id === selectedDay) || workoutPlan[0];
+  // Resolve which workout to show in each calendar slot (handles swaps + skipped).
+  const displayedPlan: WorkoutDay[] = workoutPlan.map(d => {
+    if (isSkipped(d.id)) {
+      return { ...d, type: 'rest' as const, name: 'Rest (skipped)', exercises: [], extras: ['You pushed this one — no worries, get the next session.'] };
+    }
+    const targetId = resolveDayId(d.id);
+    if (targetId === d.id) return d;
+    const source = workoutPlan.find(x => x.id === targetId);
+    return source ? { ...source, id: d.id } : d;
+  });
 
-  const weekProgress = workoutPlan.length > 0 
-    ? workoutPlan.reduce((acc, day) => {
+  const currentWorkout = displayedPlan.find(d => d.id === selectedDay) || displayedPlan[0];
+
+  const weekProgress = displayedPlan.length > 0
+    ? displayedPlan.reduce((acc, day) => {
         const exerciseCount = day.exercises?.length || 1;
         return acc + getDayProgress(day.id, exerciseCount);
-      }, 0) / workoutPlan.length
+      }, 0) / displayedPlan.length
     : 0;
+
+  // "Remind me later" countdown banner
+  const laterAt = overrides.laterAt ? new Date(overrides.laterAt) : null;
+  const laterActive = !!(laterAt && laterAt.getTime() > Date.now());
+  const laterLabel = laterActive
+    ? laterAt!.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null;
 
   const startPlanChat = (useSavedContext: boolean) => {
     setThreadType('plan');
