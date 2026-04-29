@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, ReactNode } from 'react';
 import { WorkoutDay } from '@/data/workoutPlan';
 import { ExerciseCard } from './ExerciseCard';
 import { RestTimer } from './RestTimer';
@@ -20,9 +20,11 @@ interface WorkoutViewProps {
   isDayComplete: boolean;
   onLogExercise?: (exerciseName: string, sets: SetLog[]) => void;
   getExerciseLogs?: (exerciseName: string) => SetLog[] | undefined;
+  headerSlot?: ReactNode;
+  banner?: ReactNode;
 }
 
-export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs }, ref) {
+export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs, headerSlot, banner }, ref) {
   const getButtonText = () => {
     if (isDayComplete) return 'Completed ✓';
     if (isToday) return 'Mark Day Complete';
