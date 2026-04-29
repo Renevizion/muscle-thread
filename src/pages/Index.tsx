@@ -8,10 +8,12 @@ import { ChatThreadsSidebar } from '@/components/ChatThreadsSidebar';
 import { MonthlyPrompt } from '@/components/MonthlyPrompt';
 import { ProgressCharts } from '@/components/ProgressCharts';
 import { ProgressPhotos } from '@/components/ProgressPhotos';
+import { DayActionsMenu } from '@/components/DayActionsMenu';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
+import { useDayOverrides } from '@/hooks/useDayOverrides';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp, Camera } from 'lucide-react';
+import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp, Camera, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -125,6 +127,7 @@ const Index = () => {
   const [exerciseLogs, setExerciseLogs] = useState<Record<string, { reps: number; weight: number }[]>>({});
 
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
+  const { overrides, swapDays, markSkipped, remindLater, clearLater, resetWeek, resolveDayId, isSkipped } = useDayOverrides();
   const { user, signOut } = useAuth();
 
   // Track if we've already loaded once to prevent re-running after plan creation
