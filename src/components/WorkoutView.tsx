@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, ReactNode } from 'react';
 import { WorkoutDay } from '@/data/workoutPlan';
 import { ExerciseCard } from './ExerciseCard';
 import { RestTimer } from './RestTimer';
@@ -20,9 +20,11 @@ interface WorkoutViewProps {
   isDayComplete: boolean;
   onLogExercise?: (exerciseName: string, sets: SetLog[]) => void;
   getExerciseLogs?: (exerciseName: string) => SetLog[] | undefined;
+  headerSlot?: ReactNode;
+  banner?: ReactNode;
 }
 
-export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs }, ref) {
+export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs, headerSlot, banner }, ref) {
   const getButtonText = () => {
     if (isDayComplete) return 'Completed ✓';
     if (isToday) return 'Mark Day Complete';
@@ -34,6 +36,7 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
   if (day.type === 'rest') {
     return (
       <div className="px-4 py-6 animate-slide-up">
+        {banner}
         <div className="bg-gradient-card rounded-2xl p-6 text-center">
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
             <Moon className="w-10 h-10 text-primary" />
@@ -72,6 +75,7 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
   if (day.type === 'conditioning') {
     return (
       <div className="px-4 py-6 animate-slide-up">
+        {banner}
         <div className="bg-gradient-card rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
@@ -124,15 +128,17 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
   // Training day
   return (
     <div className="px-4 pb-6 animate-slide-up">
+      {banner}
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-full bg-gradient-fire flex items-center justify-center shadow-glow">
+        <div className="w-12 h-12 rounded-full bg-gradient-fire flex items-center justify-center shadow-glow shrink-0">
           <Dumbbell className="w-6 h-6 text-primary-foreground" />
         </div>
-        <div>
-          <h2 className="font-display text-xl font-bold">{day.name}</h2>
-          <p className="text-sm text-muted-foreground">{day.focus}</p>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-display text-xl font-bold truncate">{day.name}</h2>
+          <p className="text-sm text-muted-foreground truncate">{day.focus}</p>
         </div>
+        {headerSlot}
       </div>
 
       {/* Rest Timer */}

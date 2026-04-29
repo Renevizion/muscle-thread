@@ -8,10 +8,12 @@ import { ChatThreadsSidebar } from '@/components/ChatThreadsSidebar';
 import { MonthlyPrompt } from '@/components/MonthlyPrompt';
 import { ProgressCharts } from '@/components/ProgressCharts';
 import { ProgressPhotos } from '@/components/ProgressPhotos';
+import { DayActionsMenu } from '@/components/DayActionsMenu';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
+import { useDayOverrides } from '@/hooks/useDayOverrides';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp, Camera } from 'lucide-react';
+import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp, Camera, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -125,6 +127,7 @@ const Index = () => {
   const [exerciseLogs, setExerciseLogs] = useState<Record<string, { reps: number; weight: number }[]>>({});
 
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
+  const { overrides, swapDays, markSkipped, remindLater, clearLater, resetWeek, resolveDayId, isSkipped } = useDayOverrides();
   const { user, signOut } = useAuth();
 
   // Track if we've already loaded once to prevent re-running after plan creation
@@ -250,14 +253,32 @@ const Index = () => {
     setSelectedDay(dayIndex);
   }, []);
 
-  const currentWorkout = workoutPlan.find(d => d.id === selectedDay) || workoutPlan[0];
+  // Resolve which workout to show in each calendar slot (handles swaps + skipped).
+  const displayedPlan: WorkoutDay[] = workoutPlan.map(d => {
+    if (isSkipped(d.id)) {
+      return { ...d, type: 'rest' as const, name: 'Rest (skipped)', exercises: [], extras: ['You pushed this one — no worries, get the next session.'] };
+    }
+    const targetId = resolveDayId(d.id);
+    if (targetId === d.id) return d;
+    const source = workoutPlan.find(x => x.id === targetId);
+    return source ? { ...source, id: d.id } : d;
+  });
 
-  const weekProgress = workoutPlan.length > 0 
-    ? workoutPlan.reduce((acc, day) => {
+  const currentWorkout = displayedPlan.find(d => d.id === selectedDay) || displayedPlan[0];
+
+  const weekProgress = displayedPlan.length > 0
+    ? displayedPlan.reduce((acc, day) => {
         const exerciseCount = day.exercises?.length || 1;
         return acc + getDayProgress(day.id, exerciseCount);
-      }, 0) / workoutPlan.length
+      }, 0) / displayedPlan.length
     : 0;
+
+  // "Remind me later" countdown banner
+  const laterAt = overrides.laterAt ? new Date(overrides.laterAt) : null;
+  const laterActive = !!(laterAt && laterAt.getTime() > Date.now());
+  const laterLabel = laterActive
+    ? laterAt!.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null;
 
   const startPlanChat = (useSavedContext: boolean) => {
     setThreadType('plan');
@@ -557,11 +578,11 @@ const Index = () => {
           <>
             {/* Weekly Schedule */}
             {workoutPlan.length > 0 && (
-              <WeeklySchedule 
+              <WeeklySchedule
                 currentDay={selectedDay}
                 onSelectDay={setSelectedDay}
                 getDayProgress={getDayProgress}
-                workoutPlan={workoutPlan}
+                workoutPlan={displayedPlan}
               />
             )}
 
@@ -578,6 +599,43 @@ const Index = () => {
                   isDayComplete={isDayComplete(currentWorkout.id, currentWorkout.exercises?.length || 0)}
                   onLogExercise={(exerciseName, sets) => handleLogExercise(currentWorkout.name, exerciseName, sets)}
                   getExerciseLogs={(exerciseName) => getExerciseLogSets(currentWorkout.name, exerciseName)}
+                  headerSlot={
+                    selectedDay === todayIndex ? (
+                      <DayActionsMenu
+                        todaySlotId={todayIndex}
+                        workoutPlan={workoutPlan}
+                        onSwap={(otherSlotId) => swapDays(todayIndex, otherSlotId)}
+                        onSkipToday={() => markSkipped(todayIndex)}
+                        onRemindLater={remindLater}
+                        onResetWeek={resetWeek}
+                        hasOverrides={
+                          Object.keys(overrides.swaps).length > 0 ||
+                          overrides.skipped.length > 0 ||
+                          !!overrides.laterAt
+                        }
+                      />
+                    ) : null
+                  }
+                  banner={
+                    selectedDay === todayIndex && laterActive ? (
+                      <div className="mb-4 flex items-center gap-3 p-3 rounded-xl bg-primary/10 border border-primary/30">
+                        <Clock className="w-4 h-4 text-primary shrink-0" />
+                        <div className="flex-1 text-sm">
+                          <span className="font-semibold">Reminder set</span>{' '}
+                          <span className="text-muted-foreground">for {laterLabel}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            clearLater();
+                            toast.success('Reminder cleared.');
+                          }}
+                          className="text-xs font-medium text-primary"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    ) : null
+                  }
                 />
               ) : (
                 <div className="px-4 py-12 text-center">
