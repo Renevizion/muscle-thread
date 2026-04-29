@@ -578,11 +578,11 @@ const Index = () => {
           <>
             {/* Weekly Schedule */}
             {workoutPlan.length > 0 && (
-              <WeeklySchedule 
+              <WeeklySchedule
                 currentDay={selectedDay}
                 onSelectDay={setSelectedDay}
                 getDayProgress={getDayProgress}
-                workoutPlan={workoutPlan}
+                workoutPlan={displayedPlan}
               />
             )}
 
@@ -599,6 +599,43 @@ const Index = () => {
                   isDayComplete={isDayComplete(currentWorkout.id, currentWorkout.exercises?.length || 0)}
                   onLogExercise={(exerciseName, sets) => handleLogExercise(currentWorkout.name, exerciseName, sets)}
                   getExerciseLogs={(exerciseName) => getExerciseLogSets(currentWorkout.name, exerciseName)}
+                  headerSlot={
+                    selectedDay === todayIndex ? (
+                      <DayActionsMenu
+                        todaySlotId={todayIndex}
+                        workoutPlan={workoutPlan}
+                        onSwap={(otherSlotId) => swapDays(todayIndex, otherSlotId)}
+                        onSkipToday={() => markSkipped(todayIndex)}
+                        onRemindLater={remindLater}
+                        onResetWeek={resetWeek}
+                        hasOverrides={
+                          Object.keys(overrides.swaps).length > 0 ||
+                          overrides.skipped.length > 0 ||
+                          !!overrides.laterAt
+                        }
+                      />
+                    ) : null
+                  }
+                  banner={
+                    selectedDay === todayIndex && laterActive ? (
+                      <div className="mb-4 flex items-center gap-3 p-3 rounded-xl bg-primary/10 border border-primary/30">
+                        <Clock className="w-4 h-4 text-primary shrink-0" />
+                        <div className="flex-1 text-sm">
+                          <span className="font-semibold">Reminder set</span>{' '}
+                          <span className="text-muted-foreground">for {laterLabel}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            clearLater();
+                            toast.success('Reminder cleared.');
+                          }}
+                          className="text-xs font-medium text-primary"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    ) : null
+                  }
                 />
               ) : (
                 <div className="px-4 py-12 text-center">
