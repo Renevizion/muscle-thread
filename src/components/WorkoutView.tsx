@@ -79,13 +79,14 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
         {banner}
         <div className="bg-gradient-card rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
               <Wind className="w-6 h-6 text-primary" />
             </div>
-            <div>
-              <h2 className="font-display text-xl font-bold">{day.name}</h2>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-display text-xl font-bold truncate">{day.name}</h2>
               <p className="text-sm text-muted-foreground">Active Recovery</p>
             </div>
+            {headerSlot}
           </div>
 
           {day.conditioning && (
