@@ -600,21 +600,19 @@ const Index = () => {
                   onLogExercise={(exerciseName, sets) => handleLogExercise(currentWorkout.name, exerciseName, sets)}
                   getExerciseLogs={(exerciseName) => getExerciseLogSets(currentWorkout.name, exerciseName)}
                   headerSlot={
-                    selectedDay === todayIndex ? (
-                      <DayActionsMenu
-                        todaySlotId={todayIndex}
-                        workoutPlan={workoutPlan}
-                        onSwap={(otherSlotId) => swapDays(todayIndex, otherSlotId)}
-                        onSkipToday={() => markSkipped(todayIndex)}
-                        onRemindLater={remindLater}
-                        onResetWeek={resetWeek}
-                        hasOverrides={
-                          Object.keys(overrides.swaps).length > 0 ||
-                          overrides.skipped.length > 0 ||
-                          !!overrides.laterAt
-                        }
-                      />
-                    ) : null
+                    <DayActionsMenu
+                      todaySlotId={selectedDay}
+                      workoutPlan={workoutPlan}
+                      onSwap={(otherSlotId) => swapDays(selectedDay, otherSlotId)}
+                      onSkipToday={() => markSkipped(selectedDay)}
+                      onRemindLater={remindLater}
+                      onResetWeek={resetWeek}
+                      hasOverrides={
+                        Object.keys(overrides.swaps).length > 0 ||
+                        overrides.skipped.length > 0 ||
+                        !!overrides.laterAt
+                      }
+                    />
                   }
                   banner={
                     selectedDay === todayIndex && laterActive ? (
