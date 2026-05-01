@@ -37,7 +37,8 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
     return (
       <div className="px-4 py-6 animate-slide-up">
         {banner}
-        <div className="bg-gradient-card rounded-2xl p-6 text-center">
+      <div className="bg-gradient-card rounded-2xl p-6 text-center relative">
+          {headerSlot && <div className="absolute top-3 right-3">{headerSlot}</div>}
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
             <Moon className="w-10 h-10 text-primary" />
           </div>
