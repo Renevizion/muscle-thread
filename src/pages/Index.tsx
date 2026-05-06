@@ -669,8 +669,21 @@ const Index = () => {
                   isToday={selectedDay === todayIndex}
                   todayIndex={todayIndex}
                   isDayComplete={isDayComplete(currentWorkout.id, currentWorkout.exercises?.length || 0)}
-                  onLogExercise={(exerciseName, sets) => handleLogExercise(currentWorkout.name, exerciseName, sets)}
+                  onLogExercise={(exerciseName, sets) => {
+                    // If logging a past day, stamp logged_at to that day's date this week.
+                    if (selectedDay !== todayIndex && selectedDay < todayIndex) {
+                      const monday = new Date();
+                      monday.setDate(monday.getDate() - monday.getDay() + 1);
+                      const target = new Date(monday);
+                      target.setDate(monday.getDate() + (selectedDay - 1));
+                      handleLogExercise(currentWorkout.name, exerciseName, sets, target.toISOString());
+                    } else {
+                      handleLogExercise(currentWorkout.name, exerciseName, sets);
+                    }
+                  }}
                   getExerciseLogs={(exerciseName) => getExerciseLogSets(currentWorkout.name, exerciseName)}
+                  buildDraftKey={(exerciseName) => buildDraftKey(currentWorkout.name, exerciseName)}
+                  isPastDay={selectedDay < todayIndex}
                   headerSlot={
                     <DayActionsMenu
                       todaySlotId={selectedDay}
@@ -783,6 +796,7 @@ const Index = () => {
             planId={activePlan?.id}
             threadType={threadType}
             onTitleChange={setChatTitle}
+            liveContext={liveChatContext}
           />
         </div>
       </div>
