@@ -73,11 +73,7 @@ serve(async (req) => {
           ctxLines.push(`  • ${log.date} — ${log.exercise}: ${log.sets} sets, ${log.reps} reps total, top weight ${log.weight} lbs`);
         }
       }
-      ctxLines.push(
-        "When the user asks 'what am I doing today', list today's exercises in order.",
-        "When they ask about past performance, cite the actual logged numbers above.",
-        "If they want to log a note or info mid-workout, acknowledge it conversationally.",
-      );
+      ctxLines.push("Use this data when relevant to the user's question.");
       systemPrompt += "\n" + ctxLines.join("\n");
     }
 
