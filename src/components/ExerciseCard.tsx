@@ -15,17 +15,22 @@ interface ExerciseCardProps {
   setsCompleted: number;
   isComplete: boolean;
   onToggle: () => void;
+  /** Disables the set-counter circle (not the log button) — past days are read-only for completion but still loggable. */
   disabled?: boolean;
   onLog?: (sets: SetLog[]) => void;
   savedSets?: SetLog[];
+  /** Stable key for autosaving in-progress draft inputs */
+  draftKey?: string;
+  /** Show "logging past session" hint inside the modal */
+  isPastDay?: boolean;
 }
 
-export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onToggle, disabled, onLog, savedSets }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onToggle, disabled, onLog, savedSets, draftKey, isPastDay }: ExerciseCardProps) {
   const [showLog, setShowLog] = useState(false);
 
   const handleLogClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!disabled) setShowLog(true);
+    setShowLog(true);
   };
 
   const handleSave = (sets: SetLog[]) => {
@@ -39,7 +44,6 @@ export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onTog
           "w-full text-left bg-gradient-card rounded-xl p-4 transition-all",
           !disabled && "active:scale-[0.98]",
           isComplete && "opacity-60",
-          disabled && "cursor-not-allowed opacity-50"
         )}
         style={{ animationDelay: `${index * 50}ms` }}
       >
@@ -50,7 +54,8 @@ export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onTog
             disabled={disabled}
             className={cn(
               "w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors",
-              isComplete ? "bg-success" : "bg-secondary"
+              isComplete ? "bg-success" : "bg-secondary",
+              disabled && "opacity-50 cursor-not-allowed"
             )}
           >
             {isComplete ? (
@@ -94,15 +99,14 @@ export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onTog
             )}
           </div>
 
-          {/* Log button */}
-          {!disabled && (
-            <button
-              onClick={handleLogClick}
-              className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0 hover:bg-primary/20 transition-colors"
-            >
-              <ClipboardEdit className="w-4 h-4 text-muted-foreground" />
-            </button>
-          )}
+          {/* Log button — always available so users can log past sessions too */}
+          <button
+            onClick={handleLogClick}
+            className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0 hover:bg-primary/20 transition-colors"
+            aria-label={isPastDay ? 'Log past session' : 'Log sets'}
+          >
+            <ClipboardEdit className="w-4 h-4 text-muted-foreground" />
+          </button>
         </div>
 
         {/* Set progress bar */}
@@ -122,6 +126,8 @@ export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onTog
         onClose={() => setShowLog(false)}
         onSave={handleSave}
         initialSets={savedSets}
+        draftKey={draftKey}
+        isPastDay={isPastDay}
       />
     </>
   );
