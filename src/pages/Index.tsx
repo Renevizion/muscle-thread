@@ -394,15 +394,51 @@ const Index = () => {
     toast.success('Signed out');
   };
 
-  const handleLogExercise = useCallback(async (workoutDay: string, exerciseName: string, sets: { reps: number; weight: number }[]) => {
+  // Load all exercise logs for the active plan so they survive logout/refresh.
+  useEffect(() => {
+    const loadLogs = async () => {
+      if (!user || !activePlan) return;
+      const { data } = await supabase
+        .from('workout_logs')
+        .select('workout_day, exercise_name, sets_completed, reps_completed, weight_used, logged_at')
+        .eq('user_id', user.id)
+        .eq('plan_id', activePlan.id)
+        .order('logged_at', { ascending: false })
+        .limit(500);
+
+      if (!data) return;
+
+      // Take the newest entry per (workout_day, exercise_name)
+      const byKey: Record<string, { reps: number; weight: number }[]> = {};
+      const seen = new Set<string>();
+      for (const row of data) {
+        const key = `${row.workout_day}:${row.exercise_name}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const setsCount = Math.max(1, row.sets_completed || 1);
+        const repsPer = Math.round((row.reps_completed || 0) / setsCount);
+        // We only persist totals + max weight; reconstruct an even split for display.
+        byKey[key] = Array.from({ length: setsCount }, () => ({
+          reps: repsPer,
+          weight: Number(row.weight_used) || 0,
+        }));
+      }
+      setExerciseLogs(byKey);
+    };
+    loadLogs();
+  }, [user, activePlan]);
+
+  const handleLogExercise = useCallback(async (workoutDay: string, exerciseName: string, sets: { reps: number; weight: number }[], loggedDate?: string) => {
     if (!user || !activePlan) return;
 
     const totalSets = sets.length;
     const totalReps = sets.reduce((sum, s) => sum + s.reps, 0);
     const maxWeight = Math.max(...sets.map(s => s.weight), 0);
 
-    // Upsert into workout_logs
-    const today = new Date().toISOString().split('T')[0];
+    // Use provided date (for past logging) or today.
+    const logDateISO = loggedDate || new Date().toISOString();
+    const logDate = logDateISO.split('T')[0];
+
     const { data: existing } = await supabase
       .from('workout_logs')
       .select('id')
@@ -410,7 +446,8 @@ const Index = () => {
       .eq('plan_id', activePlan.id)
       .eq('workout_day', workoutDay)
       .eq('exercise_name', exerciseName)
-      .gte('logged_at', today)
+      .gte('logged_at', logDate)
+      .lt('logged_at', new Date(new Date(logDate).getTime() + 86400000).toISOString().split('T')[0])
       .maybeSingle();
 
     if (existing) {
@@ -435,10 +472,10 @@ const Index = () => {
           reps_completed: totalReps,
           weight_used: maxWeight,
           completed: true,
+          logged_at: logDateISO,
         });
     }
 
-    // Update local state
     setExerciseLogs(prev => ({ ...prev, [`${workoutDay}:${exerciseName}`]: sets }));
     toast.success(`Logged ${exerciseName}`);
   }, [user, activePlan]);
@@ -446,6 +483,41 @@ const Index = () => {
   const getExerciseLogSets = useCallback((workoutDay: string, exerciseName: string) => {
     return exerciseLogs[`${workoutDay}:${exerciseName}`];
   }, [exerciseLogs]);
+
+  // Stable draft key per user/plan/day/exercise/date — autosaves in-progress inputs.
+  const buildDraftKey = useCallback((workoutDay: string, exerciseName: string) => {
+    if (!user || !activePlan) return undefined;
+    const today = new Date().toISOString().split('T')[0];
+    return `${user.id}:${activePlan.id}:${workoutDay}:${exerciseName}:${today}`;
+  }, [user, activePlan]);
+
+  // Build live workout context for the AI (today's plan + recent logs)
+  const liveChatContext = (() => {
+    if (!activePlan || workoutPlan.length === 0) return undefined;
+    const todaySlot = displayedPlan.find(d => d.id === todayIndex);
+    const ctx: any = {
+      planName: activePlan.name,
+      todayLabel: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][todayIndex - 1],
+      todayName: todaySlot?.name || 'Rest',
+      todayFocus: todaySlot?.focus,
+      todayExercises: (todaySlot?.exercises || []).map(e => ({
+        name: e.name, sets: e.sets, reps: e.reps, rest: e.rest, notes: e.notes,
+      })),
+      recentLogs: Object.entries(exerciseLogs).slice(0, 20).flatMap(([key, sets]) => {
+        const [day, ex] = key.split(':');
+        const totalReps = sets.reduce((s, x) => s + x.reps, 0);
+        const maxW = Math.max(...sets.map(s => s.weight), 0);
+        return [{
+          date: 'recent',
+          exercise: `${ex} (${day})`,
+          sets: sets.length,
+          reps: totalReps,
+          weight: maxW,
+        }];
+      }),
+    };
+    return ctx;
+  })();
 
   // Loading state
   if (isLoading) {
