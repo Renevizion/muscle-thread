@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles, Check } from 'lucide-react';
-import { Message, streamChat, parseWorkoutPlan, ThreadType } from '@/lib/streamChat';
+import { Message, streamChat, parseWorkoutPlan, ThreadType, ChatContext } from '@/lib/streamChat';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,8 @@ interface ChatInterfaceProps {
   planId?: string | null;
   threadType?: 'plan' | 'advice' | 'general';
   onTitleChange?: (title: string) => void;
+  /** Live workout context (today's plan + recent logs) — sent to the AI on every send */
+  liveContext?: ChatContext;
 }
 
 export function ChatInterface({ 
@@ -23,7 +25,8 @@ export function ChatInterface({
   conversationId, 
   planId,
   threadType = 'general',
-  onTitleChange
+  onTitleChange,
+  liveContext,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -301,6 +304,7 @@ export function ChatInterface({
     await streamChat({
       messages: newMessages,
       threadType: threadType as ThreadType,
+      context: liveContext,
       onDelta: updateAssistant,
       onDone: async () => {
         setIsLoading(false);
