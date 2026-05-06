@@ -73,7 +73,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, threadType = "advice" } = await req.json();
+    const { messages, threadType = "advice", context } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -81,7 +81,33 @@ serve(async (req) => {
     }
 
     // Select the appropriate system prompt
-    const systemPrompt = PROMPTS[threadType as keyof typeof PROMPTS] || PROMPTS.advice;
+    let systemPrompt = PROMPTS[threadType as keyof typeof PROMPTS] || PROMPTS.advice;
+
+    // Inject live workout context so the agent can answer day-specific questions
+    // ("what am I doing today?", "how many reps did I do for bench yesterday?", etc.)
+    if (context && typeof context === "object") {
+      const ctxLines: string[] = ["", "---", "CURRENT USER CONTEXT (live data — use it):"];
+      if (context.planName) ctxLines.push(`Active plan: ${context.planName}`);
+      if (context.todayName) ctxLines.push(`Today (${context.todayLabel ?? ""}): ${context.todayName}${context.todayFocus ? ` — ${context.todayFocus}` : ""}`);
+      if (Array.isArray(context.todayExercises) && context.todayExercises.length > 0) {
+        ctxLines.push("Today's exercises:");
+        for (const ex of context.todayExercises) {
+          ctxLines.push(`  • ${ex.name} — ${ex.sets}×${ex.reps} (rest ${ex.rest})${ex.notes ? ` — ${ex.notes}` : ""}`);
+        }
+      }
+      if (Array.isArray(context.recentLogs) && context.recentLogs.length > 0) {
+        ctxLines.push("Recent logged sets (most recent first):");
+        for (const log of context.recentLogs.slice(0, 20)) {
+          ctxLines.push(`  • ${log.date} — ${log.exercise}: ${log.sets} sets, ${log.reps} reps total, top weight ${log.weight} lbs`);
+        }
+      }
+      ctxLines.push(
+        "When the user asks 'what am I doing today', list today's exercises in order.",
+        "When they ask about past performance, cite the actual logged numbers above.",
+        "If they want to log a note or info mid-workout, acknowledge it conversationally.",
+      );
+      systemPrompt += "\n" + ctxLines.join("\n");
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

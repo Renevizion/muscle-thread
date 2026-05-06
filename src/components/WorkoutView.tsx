@@ -20,11 +20,14 @@ interface WorkoutViewProps {
   isDayComplete: boolean;
   onLogExercise?: (exerciseName: string, sets: SetLog[]) => void;
   getExerciseLogs?: (exerciseName: string) => SetLog[] | undefined;
+  /** Build a stable draft key per exercise (so in-progress inputs survive logout/refresh) */
+  buildDraftKey?: (exerciseName: string) => string | undefined;
+  isPastDay?: boolean;
   headerSlot?: ReactNode;
   banner?: ReactNode;
 }
 
-export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs, headerSlot, banner }, ref) {
+export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs, buildDraftKey, isPastDay, headerSlot, banner }, ref) {
   const getButtonText = () => {
     if (isDayComplete) return 'Completed ✓';
     if (isToday) return 'Mark Day Complete';
@@ -175,6 +178,8 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
               onToggle={() => toggleExercise(day.id, exercise.id, exercise.sets)}
               onLog={(sets) => onLogExercise?.(exercise.name, sets)}
               savedSets={getExerciseLogs?.(exercise.name)}
+              draftKey={buildDraftKey?.(exercise.name)}
+              isPastDay={isPastDay}
             />
           );
         })}

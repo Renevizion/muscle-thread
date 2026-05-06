@@ -3,15 +3,26 @@ export type ThreadType = "plan" | "advice" | "general";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fitness-coach`;
 
+export interface ChatContext {
+  planName?: string;
+  todayLabel?: string;
+  todayName?: string;
+  todayFocus?: string;
+  todayExercises?: Array<{ name: string; sets: number; reps: string; rest: string; notes?: string }>;
+  recentLogs?: Array<{ date: string; exercise: string; sets: number; reps: number; weight: number }>;
+}
+
 export async function streamChat({
   messages,
   threadType = "advice",
+  context,
   onDelta,
   onDone,
   onError,
 }: {
   messages: Message[];
   threadType?: ThreadType;
+  context?: ChatContext;
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
@@ -23,7 +34,7 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages, threadType }),
+      body: JSON.stringify({ messages, threadType, context }),
     });
 
     if (!resp.ok) {
