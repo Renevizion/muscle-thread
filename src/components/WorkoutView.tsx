@@ -25,6 +25,7 @@ interface WorkoutViewProps {
   isPastDay?: boolean;
   headerSlot?: ReactNode;
   banner?: ReactNode;
+  catchUpSlot?: ReactNode;
 }
 
 export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs, buildDraftKey, isPastDay, headerSlot, banner }, ref) {
