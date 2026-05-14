@@ -593,8 +593,52 @@ const Index = () => {
         }];
       }),
     };
+
+    // Month summary: planned sessions vs completed vs substitutes vs missed
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const trainingDaysPerWeek = workoutPlan.filter(d => d.type === 'training' || d.type === 'conditioning').length;
+    const weeksElapsed = Math.max(1, Math.ceil((now.getTime() - monthStart.getTime()) / (7 * 86400000)));
+    const plannedSessions = trainingDaysPerWeek * weeksElapsed;
+
+    // Count distinct (workout_day x date) completed real sessions this month from exerciseLogs (rough proxy)
+    // Better: count substitutes from monthSubs and treat completed real sessions separately by day name occurrences.
+    const completedSessions = new Set(
+      Object.keys(exerciseLogs).map(k => k.split(':')[0])
+    ).size;
+
+    const intensityWeight: Record<string, number> = { light: 0.25, medium: 0.5, hard: 0.8 };
+    const subs = monthSubs.filter(m => m.kind === 'substitute');
+    const missed = monthSubs.filter(m => m.kind === 'missed');
+    const subEffortPct = subs.length === 0 ? 0 :
+      Math.round(
+        (subs.reduce((sum, s) => sum + (intensityWeight[s.intensity] ?? 0.5) * Math.min(1, s.durationMin / 45), 0) / subs.length) * 100
+      );
+
+    ctx.monthSummary = {
+      monthLabel: now.toLocaleDateString([], { month: 'long', year: 'numeric' }),
+      plannedSessions,
+      completedSessions,
+      substitutes: subs.map(s => ({
+        date: s.forDate, activity: s.activity, durationMin: s.durationMin,
+        intensity: s.intensity, reason: s.reason, note: s.note,
+      })),
+      missedDays: missed.map(m => ({ date: m.forDate, reason: m.reason })),
+      estimatedSubstituteEffortPct: subEffortPct,
+      statedGoals: savedOnboardingData?.goals,
+    };
+
     return ctx;
   })();
+
+  const openMonthReview = () => {
+    setThreadType('advice');
+    setCurrentThreadId(null);
+    setChatKey(prev => prev + 1);
+    setOnboardingData(null);
+    setChatTitle('Honest Month Review');
+    setShowChat(true);
+  };
 
   // Loading state
   if (isLoading) {
