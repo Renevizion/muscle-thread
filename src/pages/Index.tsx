@@ -431,6 +431,78 @@ const Index = () => {
     loadLogs();
   }, [user, activePlan]);
 
+  // Load this-month substitutes / missed entries (used for catch-up display + month summary)
+  const loadMonthSubs = useCallback(async () => {
+    if (!user || !activePlan) return;
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('workout_logs')
+      .select('exercise_name, notes, logged_at, workout_day')
+      .eq('user_id', user.id)
+      .eq('plan_id', activePlan.id)
+      .gte('logged_at', monthStart.toISOString())
+      .order('logged_at', { ascending: false });
+    if (!data) return;
+    const parsed = data
+      .map(row => {
+        if (!row.exercise_name?.startsWith('[SUB]') && !row.exercise_name?.startsWith('[MISSED]')) return null;
+        let meta: any = {};
+        try { meta = row.notes ? JSON.parse(row.notes) : {}; } catch { /* ignore */ }
+        const kind: 'substitute' | 'missed' = row.exercise_name.startsWith('[SUB]') ? 'substitute' : 'missed';
+        return {
+          kind,
+          activity: meta.activity || row.exercise_name.replace(/^\[(SUB|MISSED)\]\s*/, ''),
+          durationMin: Number(meta.durationMin) || 0,
+          intensity: meta.intensity || 'medium',
+          reason: meta.reason,
+          forDate: (meta.forDate as string) || row.logged_at.split('T')[0],
+          note: meta.note,
+        };
+      })
+      .filter(Boolean) as any[];
+    setMonthSubs(parsed);
+  }, [user, activePlan]);
+
+  useEffect(() => { loadMonthSubs(); }, [loadMonthSubs]);
+
+  const writeMetaLog = useCallback(async (
+    exerciseTag: string,
+    meta: Record<string, any>,
+    forDate: string,
+  ) => {
+    if (!user || !activePlan) return;
+    const dayLabel = workoutPlan.find(d => {
+      const dt = new Date(forDate);
+      const idx = dt.getDay() === 0 ? 7 : dt.getDay();
+      return d.id === idx;
+    })?.name || 'Catch-up';
+    await supabase.from('workout_logs').insert({
+      user_id: user.id,
+      plan_id: activePlan.id,
+      workout_day: dayLabel,
+      exercise_name: exerciseTag,
+      sets_completed: 0,
+      reps_completed: 0,
+      weight_used: 0,
+      completed: true,
+      notes: JSON.stringify(meta),
+      logged_at: new Date(forDate + 'T12:00:00').toISOString(),
+    });
+    await loadMonthSubs();
+  }, [user, activePlan, workoutPlan, loadMonthSubs]);
+
+  const handleLogSubstitute = useCallback(async (entry: SubstituteEntry) => {
+    await writeMetaLog(`[SUB] ${entry.activity}`, { ...entry, kind: 'substitute' }, entry.forDate);
+    toast.success(`Logged ${entry.activity}`);
+  }, [writeMetaLog]);
+
+  const handleMarkSlacked = useCallback(async (date: string, reason: CatchUpReason) => {
+    await writeMetaLog('[MISSED]', { reason, forDate: date, kind: 'missed' }, date);
+    toast.success('Marked as missed');
+  }, [writeMetaLog]);
+
   const handleLogExercise = useCallback(async (workoutDay: string, exerciseName: string, sets: { reps: number; weight: number }[], loggedDate?: string) => {
     if (!user || !activePlan) return;
 
