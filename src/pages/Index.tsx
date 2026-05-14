@@ -842,6 +842,20 @@ const Index = () => {
                       </div>
                     ) : null
                   }
+                  catchUpSlot={
+                    <CatchUpInline
+                      recent={monthSubs
+                        .filter(m => m.kind === 'substitute')
+                        .map(m => ({
+                          activity: m.activity,
+                          durationMin: m.durationMin,
+                          intensity: m.intensity as any,
+                          forDate: m.forDate,
+                        }))}
+                      onLogSubstitute={handleLogSubstitute}
+                      onMarkSlacked={handleMarkSlacked}
+                    />
+                  }
                 />
               ) : (
                 <div className="px-4 py-12 text-center">
