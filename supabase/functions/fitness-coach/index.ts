@@ -73,6 +73,23 @@ serve(async (req) => {
           ctxLines.push(`  • ${log.date} — ${log.exercise}: ${log.sets} sets, ${log.reps} reps total, top weight ${log.weight} lbs`);
         }
       }
+      const m = context.monthSummary;
+      if (m && typeof m === "object") {
+        ctxLines.push(`Month so far (${m.monthLabel}): ${m.completedSessions}/${m.plannedSessions} planned sessions completed.`);
+        if (Array.isArray(m.statedGoals) && m.statedGoals.length > 0) {
+          ctxLines.push(`Stated goals: ${m.statedGoals.join(", ")}.`);
+        }
+        if (Array.isArray(m.substitutes) && m.substitutes.length > 0) {
+          ctxLines.push(`Substitute activities (~${m.estimatedSubstituteEffortPct}% effort vs a full session, on average):`);
+          for (const s of m.substitutes.slice(0, 12)) {
+            ctxLines.push(`  • ${s.date} — ${s.activity} ${s.durationMin}m ${s.intensity}${s.reason ? ` (${s.reason})` : ""}${s.note ? ` — ${s.note}` : ""}`);
+          }
+        }
+        if (Array.isArray(m.missedDays) && m.missedDays.length > 0) {
+          ctxLines.push(`Missed days: ${m.missedDays.map((d: any) => `${d.date}${d.reason ? ` (${d.reason})` : ""}`).join(", ")}.`);
+        }
+        ctxLines.push(`If the user asks how their month is going, give an honest read: compare actual work against stated goals, credit substitutes for what they realistically contribute, name the gap plainly, and suggest what to tailor next month.`);
+      }
       ctxLines.push("Use this data when relevant to the user's question.");
       systemPrompt += "\n" + ctxLines.join("\n");
     }

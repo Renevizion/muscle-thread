@@ -9,6 +9,7 @@ import { MonthlyPrompt } from '@/components/MonthlyPrompt';
 import { ProgressCharts } from '@/components/ProgressCharts';
 import { ProgressPhotos } from '@/components/ProgressPhotos';
 import { DayActionsMenu } from '@/components/DayActionsMenu';
+import { CatchUpInline, SubstituteEntry, CatchUpReason } from '@/components/CatchUpInline';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useDayOverrides } from '@/hooks/useDayOverrides';
 import { useAuth } from '@/hooks/useAuth';
@@ -125,6 +126,8 @@ const Index = () => {
   const [chatKey, setChatKey] = useState(0);
   const [activeTab, setActiveTab] = useState<'workout' | 'progress' | 'photos'>('workout');
   const [exerciseLogs, setExerciseLogs] = useState<Record<string, { reps: number; weight: number }[]>>({});
+  const [monthSubs, setMonthSubs] = useState<Array<{ activity: string; durationMin: number; intensity: string; reason?: string; forDate: string; note?: string; kind: 'substitute' | 'missed' }>>([]);
+  const [seedMessage, setSeedMessage] = useState<string | null>(null);
 
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
   const { overrides, swapDays, markSkipped, remindLater, clearLater, resetWeek, resolveDayId, isSkipped } = useDayOverrides();
@@ -412,6 +415,8 @@ const Index = () => {
       const byKey: Record<string, { reps: number; weight: number }[]> = {};
       const seen = new Set<string>();
       for (const row of data) {
+        // Skip substitute / missed marker rows — they're handled separately.
+        if (row.exercise_name?.startsWith('[SUB]') || row.exercise_name?.startsWith('[MISSED]')) continue;
         const key = `${row.workout_day}:${row.exercise_name}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -427,6 +432,78 @@ const Index = () => {
     };
     loadLogs();
   }, [user, activePlan]);
+
+  // Load this-month substitutes / missed entries (used for catch-up display + month summary)
+  const loadMonthSubs = useCallback(async () => {
+    if (!user || !activePlan) return;
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('workout_logs')
+      .select('exercise_name, notes, logged_at, workout_day')
+      .eq('user_id', user.id)
+      .eq('plan_id', activePlan.id)
+      .gte('logged_at', monthStart.toISOString())
+      .order('logged_at', { ascending: false });
+    if (!data) return;
+    const parsed = data
+      .map(row => {
+        if (!row.exercise_name?.startsWith('[SUB]') && !row.exercise_name?.startsWith('[MISSED]')) return null;
+        let meta: any = {};
+        try { meta = row.notes ? JSON.parse(row.notes) : {}; } catch { /* ignore */ }
+        const kind: 'substitute' | 'missed' = row.exercise_name.startsWith('[SUB]') ? 'substitute' : 'missed';
+        return {
+          kind,
+          activity: meta.activity || row.exercise_name.replace(/^\[(SUB|MISSED)\]\s*/, ''),
+          durationMin: Number(meta.durationMin) || 0,
+          intensity: meta.intensity || 'medium',
+          reason: meta.reason,
+          forDate: (meta.forDate as string) || row.logged_at.split('T')[0],
+          note: meta.note,
+        };
+      })
+      .filter(Boolean) as any[];
+    setMonthSubs(parsed);
+  }, [user, activePlan]);
+
+  useEffect(() => { loadMonthSubs(); }, [loadMonthSubs]);
+
+  const writeMetaLog = useCallback(async (
+    exerciseTag: string,
+    meta: Record<string, any>,
+    forDate: string,
+  ) => {
+    if (!user || !activePlan) return;
+    const dayLabel = workoutPlan.find(d => {
+      const dt = new Date(forDate);
+      const idx = dt.getDay() === 0 ? 7 : dt.getDay();
+      return d.id === idx;
+    })?.name || 'Catch-up';
+    await supabase.from('workout_logs').insert({
+      user_id: user.id,
+      plan_id: activePlan.id,
+      workout_day: dayLabel,
+      exercise_name: exerciseTag,
+      sets_completed: 0,
+      reps_completed: 0,
+      weight_used: 0,
+      completed: true,
+      notes: JSON.stringify(meta),
+      logged_at: new Date(forDate + 'T12:00:00').toISOString(),
+    });
+    await loadMonthSubs();
+  }, [user, activePlan, workoutPlan, loadMonthSubs]);
+
+  const handleLogSubstitute = useCallback(async (entry: SubstituteEntry) => {
+    await writeMetaLog(`[SUB] ${entry.activity}`, { ...entry, kind: 'substitute' }, entry.forDate);
+    toast.success(`Logged ${entry.activity}`);
+  }, [writeMetaLog]);
+
+  const handleMarkSlacked = useCallback(async (date: string, reason: CatchUpReason) => {
+    await writeMetaLog('[MISSED]', { reason, forDate: date, kind: 'missed' }, date);
+    toast.success('Marked as missed');
+  }, [writeMetaLog]);
 
   const handleLogExercise = useCallback(async (workoutDay: string, exerciseName: string, sets: { reps: number; weight: number }[], loggedDate?: string) => {
     if (!user || !activePlan) return;
@@ -516,8 +593,54 @@ const Index = () => {
         }];
       }),
     };
+
+    // Month summary: planned sessions vs completed vs substitutes vs missed
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const trainingDaysPerWeek = workoutPlan.filter(d => d.type === 'training' || d.type === 'conditioning').length;
+    const weeksElapsed = Math.max(1, Math.ceil((now.getTime() - monthStart.getTime()) / (7 * 86400000)));
+    const plannedSessions = trainingDaysPerWeek * weeksElapsed;
+
+    // Count distinct (workout_day x date) completed real sessions this month from exerciseLogs (rough proxy)
+    // Better: count substitutes from monthSubs and treat completed real sessions separately by day name occurrences.
+    const completedSessions = new Set(
+      Object.keys(exerciseLogs).map(k => k.split(':')[0])
+    ).size;
+
+    const intensityWeight: Record<string, number> = { light: 0.25, medium: 0.5, hard: 0.8 };
+    const subs = monthSubs.filter(m => m.kind === 'substitute');
+    const missed = monthSubs.filter(m => m.kind === 'missed');
+    const subEffortPct = subs.length === 0 ? 0 :
+      Math.round(
+        (subs.reduce((sum, s) => sum + (intensityWeight[s.intensity] ?? 0.5) * Math.min(1, s.durationMin / 45), 0) / subs.length) * 100
+      );
+
+    ctx.monthSummary = {
+      monthLabel: now.toLocaleDateString([], { month: 'long', year: 'numeric' }),
+      plannedSessions,
+      completedSessions,
+      substitutes: subs.map(s => ({
+        date: s.forDate, activity: s.activity, durationMin: s.durationMin,
+        intensity: s.intensity, reason: s.reason, note: s.note,
+      })),
+      missedDays: missed.map(m => ({ date: m.forDate, reason: m.reason })),
+      estimatedSubstituteEffortPct: subEffortPct,
+      statedGoals: savedOnboardingData
+        ? [savedOnboardingData.primaryGoal, ...(savedOnboardingData.secondaryGoals || [])].filter(Boolean)
+        : undefined,
+    };
+
     return ctx;
   })();
+
+  const openMonthReview = () => {
+    setThreadType('advice');
+    setCurrentThreadId(null);
+    setChatKey(prev => prev + 1);
+    setOnboardingData(null);
+    setChatTitle('Honest Month Review');
+    setShowChat(true);
+  };
 
   // Loading state
   if (isLoading) {
@@ -544,6 +667,7 @@ const Index = () => {
           onCreateNew={handleMonthlyCreateNew}
           onRevise={handleMonthlyRevise}
           onContinue={handleMonthlyContinue}
+          onReview={openMonthReview}
         />
       )}
 
@@ -719,6 +843,20 @@ const Index = () => {
                       </div>
                     ) : null
                   }
+                  catchUpSlot={
+                    <CatchUpInline
+                      recent={monthSubs
+                        .filter(m => m.kind === 'substitute')
+                        .map(m => ({
+                          activity: m.activity,
+                          durationMin: m.durationMin,
+                          intensity: m.intensity as any,
+                          forDate: m.forDate,
+                        }))}
+                      onLogSubstitute={handleLogSubstitute}
+                      onMarkSlacked={handleMarkSlacked}
+                    />
+                  }
                 />
               ) : (
                 <div className="px-4 py-12 text-center">
@@ -743,6 +881,22 @@ const Index = () => {
           </>
         ) : activeTab === 'progress' ? (
           <main className="mt-2 pb-20">
+            {activePlan && (
+              <div className="px-4 mb-3">
+                <button
+                  onClick={openMonthReview}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-card border border-border text-left"
+                >
+                  <Flame className="w-5 h-5 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-semibold">Honest month review</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Ask the coach how planned vs actual lines up with your goals.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            )}
             <ProgressCharts planId={activePlan?.id || null} />
           </main>
         ) : (
