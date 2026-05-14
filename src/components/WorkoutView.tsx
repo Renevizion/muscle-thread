@@ -28,7 +28,7 @@ interface WorkoutViewProps {
   catchUpSlot?: ReactNode;
 }
 
-export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs, buildDraftKey, isPastDay, headerSlot, banner }, ref) {
+export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function WorkoutView({ day, getExerciseProgress, toggleExercise, markDayComplete, isToday, todayIndex, isDayComplete, onLogExercise, getExerciseLogs, buildDraftKey, isPastDay, headerSlot, banner, catchUpSlot }, ref) {
   const getButtonText = () => {
     if (isDayComplete) return 'Completed ✓';
     if (isToday) return 'Mark Day Complete';
