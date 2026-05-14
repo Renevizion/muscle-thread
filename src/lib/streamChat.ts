@@ -10,6 +10,15 @@ export interface ChatContext {
   todayFocus?: string;
   todayExercises?: Array<{ name: string; sets: number; reps: string; rest: string; notes?: string }>;
   recentLogs?: Array<{ date: string; exercise: string; sets: number; reps: number; weight: number }>;
+  monthSummary?: {
+    monthLabel: string;
+    plannedSessions: number;
+    completedSessions: number;
+    substitutes: Array<{ date: string; activity: string; durationMin: number; intensity: string; reason?: string; note?: string }>;
+    missedDays: Array<{ date: string; reason?: string }>;
+    estimatedSubstituteEffortPct: number; // 0-100, vs. a full planned session
+    statedGoals?: string[];
+  };
 }
 
 export async function streamChat({
