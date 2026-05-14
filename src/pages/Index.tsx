@@ -126,6 +126,8 @@ const Index = () => {
   const [chatKey, setChatKey] = useState(0);
   const [activeTab, setActiveTab] = useState<'workout' | 'progress' | 'photos'>('workout');
   const [exerciseLogs, setExerciseLogs] = useState<Record<string, { reps: number; weight: number }[]>>({});
+  const [monthSubs, setMonthSubs] = useState<Array<{ activity: string; durationMin: number; intensity: string; reason?: string; forDate: string; note?: string; kind: 'substitute' | 'missed' }>>([]);
+  const [seedMessage, setSeedMessage] = useState<string | null>(null);
 
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
   const { overrides, swapDays, markSkipped, remindLater, clearLater, resetWeek, resolveDayId, isSkipped } = useDayOverrides();
