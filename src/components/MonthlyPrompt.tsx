@@ -9,9 +9,10 @@ interface MonthlyPromptProps {
   onCreateNew: () => void;
   onRevise: () => void;
   onContinue: () => void;
+  onReview?: () => void;
 }
 
-export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue }: MonthlyPromptProps) {
+export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, onReview }: MonthlyPromptProps) {
   const { user } = useAuth();
   const [showPrompt, setShowPrompt] = useState(false);
   const [completionRate, setCompletionRate] = useState<number | null>(null);
