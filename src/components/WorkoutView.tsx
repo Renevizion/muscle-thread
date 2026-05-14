@@ -41,6 +41,7 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
     return (
       <div className="px-4 py-6 animate-slide-up">
         {banner}
+        {catchUpSlot}
       <div className="bg-gradient-card rounded-2xl p-6 text-center relative">
           {headerSlot && <div className="absolute top-3 right-3">{headerSlot}</div>}
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
@@ -81,6 +82,7 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
     return (
       <div className="px-4 py-6 animate-slide-up">
         {banner}
+        {catchUpSlot}
         <div className="bg-gradient-card rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
@@ -135,6 +137,7 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
   return (
     <div className="px-4 pb-6 animate-slide-up">
       {banner}
+      {catchUpSlot}
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-full bg-gradient-fire flex items-center justify-center shadow-glow shrink-0">
