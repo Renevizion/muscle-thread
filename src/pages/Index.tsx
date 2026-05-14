@@ -881,6 +881,22 @@ const Index = () => {
           </>
         ) : activeTab === 'progress' ? (
           <main className="mt-2 pb-20">
+            {activePlan && (
+              <div className="px-4 mb-3">
+                <button
+                  onClick={openMonthReview}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-card border border-border text-left"
+                >
+                  <Flame className="w-5 h-5 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-semibold">Honest month review</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Ask the coach how planned vs actual lines up with your goals.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            )}
             <ProgressCharts planId={activePlan?.id || null} />
           </main>
         ) : (
