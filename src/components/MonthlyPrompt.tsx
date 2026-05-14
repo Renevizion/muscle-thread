@@ -156,6 +156,22 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
               <p className="text-xs text-muted-foreground">Extend for another month</p>
             </div>
           </button>
+
+          {onReview && (
+            <button
+              onClick={() => {
+                setShowPrompt(false);
+                onReview();
+              }}
+              className="w-full flex items-center gap-4 p-4 bg-secondary/60 hover:bg-secondary rounded-xl text-left transition-colors"
+            >
+              <Sparkles className="w-5 h-5 shrink-0 text-primary" />
+              <div className="flex-1">
+                <p className="font-display font-semibold">Honest Month Review</p>
+                <p className="text-xs text-muted-foreground">See how planned vs actual lines up with your goals</p>
+              </div>
+            </button>
+          )}
         </div>
       </div>
     </div>
