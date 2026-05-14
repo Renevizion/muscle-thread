@@ -625,7 +625,9 @@ const Index = () => {
       })),
       missedDays: missed.map(m => ({ date: m.forDate, reason: m.reason })),
       estimatedSubstituteEffortPct: subEffortPct,
-      statedGoals: savedOnboardingData?.goals,
+      statedGoals: savedOnboardingData
+        ? [savedOnboardingData.primaryGoal, ...(savedOnboardingData.secondaryGoals || [])].filter(Boolean)
+        : undefined,
     };
 
     return ctx;
