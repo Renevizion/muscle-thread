@@ -415,6 +415,8 @@ const Index = () => {
       const byKey: Record<string, { reps: number; weight: number }[]> = {};
       const seen = new Set<string>();
       for (const row of data) {
+        // Skip substitute / missed marker rows — they're handled separately.
+        if (row.exercise_name?.startsWith('[SUB]') || row.exercise_name?.startsWith('[MISSED]')) continue;
         const key = `${row.workout_day}:${row.exercise_name}`;
         if (seen.has(key)) continue;
         seen.add(key);
