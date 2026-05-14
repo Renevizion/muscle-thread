@@ -667,6 +667,7 @@ const Index = () => {
           onCreateNew={handleMonthlyCreateNew}
           onRevise={handleMonthlyRevise}
           onContinue={handleMonthlyContinue}
+          onReview={openMonthReview}
         />
       )}
 
