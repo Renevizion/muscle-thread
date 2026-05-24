@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import { PropagationChecker } from "@/components/dev/PropagationChecker";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PropagationChecker />
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
