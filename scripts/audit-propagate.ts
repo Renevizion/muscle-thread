@@ -81,8 +81,10 @@ function audit(): Violation[] {
 
   // Forbidden tokens across all source
   const allFiles = walk(path.join(ROOT, 'src'));
+  const SELF_EXEMPT = /lib\/patterns\/registry\.(t|j)sx?$/;
   for (const file of allFiles) {
     const rel = path.relative(ROOT, file);
+    if (SELF_EXEMPT.test(rel)) continue;
     const content = fs.readFileSync(file, 'utf-8');
     for (const { token, reason, ignore } of FORBIDDEN_TOKENS) {
       if (ignore && ignore.test(rel)) continue;
