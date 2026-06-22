@@ -662,8 +662,13 @@ const Index = () => {
   }
 
   // Onboarding flow for new users
-  if (needsOnboarding && !showChat) {
+  if (needsOnboarding && !showChat && !revealData) {
     return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
+
+  // Personalized "gotcha" reveal between onboarding and the coach
+  if (revealData) {
+    return <PlanGenerationReveal data={revealData} onDone={handleRevealDone} />;
   }
 
   return (
