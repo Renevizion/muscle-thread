@@ -306,14 +306,21 @@ const Index = () => {
   const handleOnboardingComplete = (data: OnboardingData) => {
     writeSavedOnboarding(data);
     setSavedOnboardingData(data);
+    // Show the personalized "gotcha" reveal before dropping into the coach.
+    setRevealData(data);
+    setNeedsOnboarding(false);
+  };
 
+  const handleRevealDone = () => {
+    const data = revealData;
+    setRevealData(null);
+    if (!data) return;
     setOnboardingData(data);
     setThreadType('plan');
     setChatTitle('Build New Plan');
     setCurrentThreadId(null);
     setChatKey(prev => prev + 1);
     setShowChat(true);
-    setNeedsOnboarding(false);
   };
 
   const handlePlanCreated = (plan: any) => {
