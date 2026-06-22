@@ -4,6 +4,7 @@ import { WeeklySchedule } from '@/components/WeeklySchedule';
 import { WorkoutView } from '@/components/WorkoutView';
 import { ChatInterface } from '@/components/ChatInterface';
 import { OnboardingFlow, OnboardingData } from '@/components/onboarding/OnboardingFlow';
+import { PlanGenerationReveal } from '@/components/onboarding/PlanGenerationReveal';
 import { ChatThreadsSidebar } from '@/components/ChatThreadsSidebar';
 import { MonthlyPrompt } from '@/components/MonthlyPrompt';
 import { ProgressCharts } from '@/components/ProgressCharts';
