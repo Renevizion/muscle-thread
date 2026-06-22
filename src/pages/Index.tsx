@@ -116,6 +116,7 @@ const Index = () => {
   const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [revealData, setRevealData] = useState<OnboardingData | null>(null);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [savedOnboardingData, setSavedOnboardingData] = useState<OnboardingData | null>(null);
 
