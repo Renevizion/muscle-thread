@@ -4,6 +4,7 @@ import { WeeklySchedule } from '@/components/WeeklySchedule';
 import { WorkoutView } from '@/components/WorkoutView';
 import { ChatInterface } from '@/components/ChatInterface';
 import { OnboardingFlow, OnboardingData } from '@/components/onboarding/OnboardingFlow';
+import { PlanGenerationReveal } from '@/components/onboarding/PlanGenerationReveal';
 import { ChatThreadsSidebar } from '@/components/ChatThreadsSidebar';
 import { MonthlyPrompt } from '@/components/MonthlyPrompt';
 import { ProgressCharts } from '@/components/ProgressCharts';
@@ -116,6 +117,7 @@ const Index = () => {
   const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [revealData, setRevealData] = useState<OnboardingData | null>(null);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [savedOnboardingData, setSavedOnboardingData] = useState<OnboardingData | null>(null);
 
@@ -305,14 +307,21 @@ const Index = () => {
   const handleOnboardingComplete = (data: OnboardingData) => {
     writeSavedOnboarding(data);
     setSavedOnboardingData(data);
+    // Show the personalized "gotcha" reveal before dropping into the coach.
+    setRevealData(data);
+    setNeedsOnboarding(false);
+  };
 
+  const handleRevealDone = () => {
+    const data = revealData;
+    setRevealData(null);
+    if (!data) return;
     setOnboardingData(data);
     setThreadType('plan');
     setChatTitle('Build New Plan');
     setCurrentThreadId(null);
     setChatKey(prev => prev + 1);
     setShowChat(true);
-    setNeedsOnboarding(false);
   };
 
   const handlePlanCreated = (plan: any) => {
@@ -654,8 +663,13 @@ const Index = () => {
   }
 
   // Onboarding flow for new users
-  if (needsOnboarding && !showChat) {
+  if (needsOnboarding && !showChat && !revealData) {
     return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
+
+  // Personalized "gotcha" reveal between onboarding and the coach
+  if (revealData) {
+    return <PlanGenerationReveal data={revealData} onDone={handleRevealDone} />;
   }
 
   return (
