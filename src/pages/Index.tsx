@@ -663,6 +663,23 @@ const Index = () => {
         : undefined,
     };
 
+    // Persistent coach memory: bodyweight trend + user's own notes.
+    if (weightLog.length > 0) {
+      const latest = weightLog[0];
+      const earliest = weightLog[weightLog.length - 1];
+      ctx.bodyweight = {
+        current: latest.value,
+        currentDate: latest.date,
+        previous: weightLog[1]?.value,
+        startOfRecord: earliest.value,
+        changeSinceStart: +(latest.value - earliest.value).toFixed(1),
+        history: weightLog.slice(0, 12).map(w => ({ date: w.date, value: w.value })),
+      };
+    }
+    if (coachNotes.length > 0) {
+      ctx.userNotes = coachNotes.slice(0, 15).map(n => ({ date: n.date, note: n.content }));
+    }
+
     return ctx;
   })();
 
