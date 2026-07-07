@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      coach_notes: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          kind: string
+          unit: string | null
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          unit?: string | null
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          unit?: string | null
+          user_id?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
       plan_conversations: {
         Row: {
           created_at: string
