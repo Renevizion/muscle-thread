@@ -480,6 +480,28 @@ const Index = () => {
 
   useEffect(() => { loadMonthSubs(); }, [loadMonthSubs]);
 
+  // Load persistent "coach memory": quick notes + bodyweight check-ins.
+  const loadCoachMemory = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('coach_notes')
+      .select('kind, content, value, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(60);
+    if (!data) return;
+    setCoachNotes(
+      data.filter(r => r.kind === 'note' && r.content)
+        .map(r => ({ content: r.content as string, date: r.created_at.split('T')[0] }))
+    );
+    setWeightLog(
+      data.filter(r => r.kind === 'weight' && r.value != null)
+        .map(r => ({ value: Number(r.value), date: r.created_at.split('T')[0] }))
+    );
+  }, [user]);
+
+  useEffect(() => { loadCoachMemory(); }, [loadCoachMemory]);
+
   const writeMetaLog = useCallback(async (
     exerciseTag: string,
     meta: Record<string, any>,
