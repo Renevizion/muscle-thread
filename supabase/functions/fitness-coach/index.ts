@@ -90,6 +90,20 @@ serve(async (req) => {
         }
         ctxLines.push(`If the user asks how their month is going, give an honest read: compare actual work against stated goals, credit substitutes for what they realistically contribute, name the gap plainly, and suggest what to tailor next month.`);
       }
+      const bw = context.bodyweight;
+      if (bw && typeof bw === "object") {
+        ctxLines.push(`Bodyweight: currently ${bw.current} lbs (as of ${bw.currentDate}), ${bw.changeSinceStart >= 0 ? "up" : "down"} ${Math.abs(bw.changeSinceStart)} lbs since tracking started at ${bw.startOfRecord} lbs.`);
+        if (Array.isArray(bw.history) && bw.history.length > 1) {
+          ctxLines.push(`Weight history: ${bw.history.map((h: any) => `${h.date}: ${h.value}`).join(", ")}.`);
+        }
+        ctxLines.push(`When building or revising a plan, factor in this bodyweight and its trend against their goal. If weight is moving the wrong way for the stated goal, say so and adjust volume/intensity/nutrition guidance accordingly.`);
+      }
+      if (Array.isArray(context.userNotes) && context.userNotes.length > 0) {
+        ctxLines.push(`User's own notes/ideas (their words — treat as high-signal intent, remember and act on these):`);
+        for (const n of context.userNotes) {
+          ctxLines.push(`  • ${n.date}: ${n.note}`);
+        }
+      }
       ctxLines.push("Use this data when relevant to the user's question.");
       systemPrompt += "\n" + ctxLines.join("\n");
     }

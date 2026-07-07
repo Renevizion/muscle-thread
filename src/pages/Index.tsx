@@ -11,6 +11,7 @@ import { ProgressCharts } from '@/components/ProgressCharts';
 import { ProgressPhotos } from '@/components/ProgressPhotos';
 import { DayActionsMenu } from '@/components/DayActionsMenu';
 import { CatchUpInline, SubstituteEntry, CatchUpReason } from '@/components/CatchUpInline';
+import { QuickCapture } from '@/components/QuickCapture';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useDayOverrides } from '@/hooks/useDayOverrides';
 import { useAuth } from '@/hooks/useAuth';
@@ -130,6 +131,8 @@ const Index = () => {
   const [exerciseLogs, setExerciseLogs] = useState<Record<string, { reps: number; weight: number }[]>>({});
   const [monthSubs, setMonthSubs] = useState<Array<{ activity: string; durationMin: number; intensity: string; reason?: string; forDate: string; note?: string; kind: 'substitute' | 'missed' }>>([]);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
+  const [coachNotes, setCoachNotes] = useState<Array<{ content: string; date: string }>>([]);
+  const [weightLog, setWeightLog] = useState<Array<{ value: number; date: string }>>([]);
 
   const { toggleExercise, markDayComplete, getExerciseProgress, getDayProgress, isDayComplete } = useWorkoutProgress();
   const { overrides, swapDays, markSkipped, remindLater, clearLater, resetWeek, resolveDayId, isSkipped } = useDayOverrides();
@@ -478,6 +481,28 @@ const Index = () => {
 
   useEffect(() => { loadMonthSubs(); }, [loadMonthSubs]);
 
+  // Load persistent "coach memory": quick notes + bodyweight check-ins.
+  const loadCoachMemory = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('coach_notes')
+      .select('kind, content, value, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(60);
+    if (!data) return;
+    setCoachNotes(
+      data.filter(r => r.kind === 'note' && r.content)
+        .map(r => ({ content: r.content as string, date: r.created_at.split('T')[0] }))
+    );
+    setWeightLog(
+      data.filter(r => r.kind === 'weight' && r.value != null)
+        .map(r => ({ value: Number(r.value), date: r.created_at.split('T')[0] }))
+    );
+  }, [user]);
+
+  useEffect(() => { loadCoachMemory(); }, [loadCoachMemory]);
+
   const writeMetaLog = useCallback(async (
     exerciseTag: string,
     meta: Record<string, any>,
@@ -639,6 +664,23 @@ const Index = () => {
         : undefined,
     };
 
+    // Persistent coach memory: bodyweight trend + user's own notes.
+    if (weightLog.length > 0) {
+      const latest = weightLog[0];
+      const earliest = weightLog[weightLog.length - 1];
+      ctx.bodyweight = {
+        current: latest.value,
+        currentDate: latest.date,
+        previous: weightLog[1]?.value,
+        startOfRecord: earliest.value,
+        changeSinceStart: +(latest.value - earliest.value).toFixed(1),
+        history: weightLog.slice(0, 12).map(w => ({ date: w.date, value: w.value })),
+      };
+    }
+    if (coachNotes.length > 0) {
+      ctx.userNotes = coachNotes.slice(0, 15).map(n => ({ date: n.date, note: n.content }));
+    }
+
     return ctx;
   })();
 
@@ -798,6 +840,11 @@ const Index = () => {
 
             {/* Workout Content */}
             <main className="mt-2 pb-20">
+              {workoutPlan.length > 0 && (
+                <div className="px-4">
+                  <QuickCapture onChange={loadCoachMemory} />
+                </div>
+              )}
               {currentWorkout ? (
                 <WorkoutView
                   day={currentWorkout}
