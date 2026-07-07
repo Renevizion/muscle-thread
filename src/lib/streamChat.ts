@@ -19,6 +19,15 @@ export interface ChatContext {
     estimatedSubstituteEffortPct: number; // 0-100, vs. a full planned session
     statedGoals?: string[];
   };
+  bodyweight?: {
+    current: number;
+    currentDate: string;
+    previous?: number;
+    startOfRecord: number;
+    changeSinceStart: number;
+    history: Array<{ date: string; value: number }>;
+  };
+  userNotes?: Array<{ date: string; note: string }>;
 }
 
 export async function streamChat({
