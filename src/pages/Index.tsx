@@ -11,6 +11,7 @@ import { ProgressCharts } from '@/components/ProgressCharts';
 import { ProgressPhotos } from '@/components/ProgressPhotos';
 import { DayActionsMenu } from '@/components/DayActionsMenu';
 import { CatchUpInline, SubstituteEntry, CatchUpReason } from '@/components/CatchUpInline';
+import { QuickCapture } from '@/components/QuickCapture';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useDayOverrides } from '@/hooks/useDayOverrides';
 import { useAuth } from '@/hooks/useAuth';
