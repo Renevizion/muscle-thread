@@ -839,7 +839,11 @@ const Index = () => {
 
             {/* Workout Content */}
             <main className="mt-2 pb-20">
-              {currentWorkout ? (
+              {workoutPlan.length > 0 && (
+                <div className="px-4">
+                  <QuickCapture onChange={loadCoachMemory} />
+                </div>
+              )}
                 <WorkoutView
                   day={currentWorkout}
                   getExerciseProgress={getExerciseProgress}
