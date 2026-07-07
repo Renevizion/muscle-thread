@@ -844,6 +844,7 @@ const Index = () => {
                   <QuickCapture onChange={loadCoachMemory} />
                 </div>
               )}
+              {currentWorkout ? (
                 <WorkoutView
                   day={currentWorkout}
                   getExerciseProgress={getExerciseProgress}
