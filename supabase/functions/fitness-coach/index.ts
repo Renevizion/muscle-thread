@@ -88,7 +88,22 @@ serve(async (req) => {
         if (Array.isArray(m.missedDays) && m.missedDays.length > 0) {
           ctxLines.push(`Missed days: ${m.missedDays.map((d: any) => `${d.date}${d.reason ? ` (${d.reason})` : ""}`).join(", ")}.`);
         }
+        if (typeof m.monthlyScore === "number") {
+          ctxLines.push(`Blended monthly fitness score: ${m.monthlyScore}/100 (execution ${m.executionScore}/100, catch-up load ${m.substituteLoadScore} session-equivalents). This already credits substitute work — use it as the honest number.`);
+        }
         ctxLines.push(`If the user asks how their month is going, give an honest read: compare actual work against stated goals, credit substitutes for what they realistically contribute, name the gap plainly, and suggest what to tailor next month.`);
+      }
+      const sc = context.selfCorrection;
+      if (sc && typeof sc === "object" && sc.state && sc.state !== "aligned") {
+        ctxLines.push(`Self-correction signal: ${sc.message}`);
+        if (sc.needsReEntry) {
+          ctxLines.push(`They are in catch-up mode after ${sc.consecutiveMissed} days off. When they want to train, DON'T assume today's planned session applies — offer a protected re-entry session at ~${Math.round((1 - sc.loadDampening) * 100)}% load first, then ramp. Reassure them missing time due to life/health is fine and factored in.`);
+        }
+        if (sc.overtrainingRisk) {
+          ctxLines.push(`Overtraining risk detected (${sc.reasonPattern}). Consider proactively suggesting an active-recovery day.`);
+        } else if (sc.reasonPattern) {
+          ctxLines.push(`Reason pattern: ${sc.reasonPattern}`);
+        }
       }
       const bw = context.bodyweight;
       if (bw && typeof bw === "object") {
