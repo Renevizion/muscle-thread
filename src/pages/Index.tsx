@@ -12,6 +12,8 @@ import { ProgressPhotos } from '@/components/ProgressPhotos';
 import { DayActionsMenu } from '@/components/DayActionsMenu';
 import { CatchUpInline, SubstituteEntry, CatchUpReason } from '@/components/CatchUpInline';
 import { QuickCapture } from '@/components/QuickCapture';
+import { QuickThoughtCapsule } from '@/components/QuickThoughtCapsule';
+import { computeMonthLoad, assessDeficit, classifyReasons, type Intensity } from '@/lib/biometrics';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useDayOverrides } from '@/hooks/useDayOverrides';
 import { useAuth } from '@/hooks/useAuth';
