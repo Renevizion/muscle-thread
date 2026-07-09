@@ -1085,6 +1085,9 @@ const Index = () => {
           />
         </div>
       </div>
+
+      {/* Floating Quick-Thought Capsule — dump fleeting ideas into coach memory */}
+      {!showChat && <QuickThoughtCapsule onSaved={loadCoachMemory} />}
     </div>
   );
 };
