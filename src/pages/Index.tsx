@@ -819,10 +819,20 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-card rounded-full px-3 py-1.5">
-                <Flame className="w-4 h-4 text-primary" />
+              {/* Biometric Deficit HUD ring */}
+              <button
+                type="button"
+                onClick={openMonthReview}
+                title={biometrics.deficit.message}
+                className={cn(
+                  'flex items-center gap-2 bg-card rounded-full px-3 py-1.5 ring-2 transition-colors',
+                  hudRing,
+                )}
+              >
+                <Flame className={cn('w-4 h-4', hudColor)} />
                 <span className="font-display text-sm font-semibold">{Math.round(weekProgress)}%</span>
               </div>
+              </button>
               
               <button
                 onClick={() => setShowChat(true)}
