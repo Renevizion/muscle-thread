@@ -831,7 +831,6 @@ const Index = () => {
               >
                 <Flame className={cn('w-4 h-4', hudColor)} />
                 <span className="font-display text-sm font-semibold">{Math.round(weekProgress)}%</span>
-              </div>
               </button>
               
               <button
