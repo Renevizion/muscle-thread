@@ -684,6 +684,65 @@ const Index = () => {
     return ctx;
   })();
 
+  // Biometric inference: convert catch-up activity into structured load,
+  // detect deficits, and self-correct volume. Enriches both UI + AI context.
+  const biometrics = (() => {
+    const subs = monthSubs
+      .filter(m => m.kind === 'substitute')
+      .map(m => ({
+        activity: m.activity,
+        durationMin: m.durationMin,
+        intensity: (m.intensity as Intensity) ?? 'medium',
+        reason: m.reason,
+        forDate: m.forDate,
+      }));
+    const missed = monthSubs
+      .filter(m => m.kind === 'missed')
+      .map(m => ({ forDate: m.forDate, reason: m.reason }));
+
+    const ms = liveChatContext.monthSummary;
+    const monthLoad = computeMonthLoad({
+      plannedSessions: ms?.plannedSessions ?? 0,
+      completedSessions: ms?.completedSessions ?? 0,
+      substitutes: subs,
+      missed,
+    });
+
+    const lastActivityDate = subs.length
+      ? subs.map(s => s.forDate).sort().slice(-1)[0]
+      : null;
+    const deficit = assessDeficit({ lastActivityDate, missed });
+    const reasons = classifyReasons([...subs.map(s => s.reason), ...missed.map(m => m.reason)]);
+
+    return { monthLoad, deficit, reasons };
+  })();
+
+  // Feed the inference results back into the AI context so the coach reasons
+  // over real load, deficits, and overtraining risk instead of raw text.
+  if (liveChatContext.monthSummary) {
+    liveChatContext.monthSummary.substituteLoadScore = biometrics.monthLoad.substituteLoad;
+    liveChatContext.monthSummary.monthlyScore = biometrics.monthLoad.monthlyScore;
+    liveChatContext.monthSummary.executionScore = biometrics.monthLoad.executionScore;
+  }
+  liveChatContext.selfCorrection = {
+    state: biometrics.deficit.state,
+    consecutiveMissed: biometrics.deficit.consecutiveMissed,
+    loadDampening: biometrics.deficit.loadDampening,
+    needsReEntry: biometrics.deficit.needsReEntry,
+    message: biometrics.deficit.message,
+    overtrainingRisk: biometrics.reasons.overtrainingRisk,
+    reasonPattern: biometrics.reasons.summary,
+  };
+
+  const hudColor =
+    biometrics.deficit.state === 'catchup' ? 'text-purple-400'
+    : biometrics.deficit.state === 'minor' ? 'text-amber-400'
+    : 'text-emerald-400';
+  const hudRing =
+    biometrics.deficit.state === 'catchup' ? 'ring-purple-400/60'
+    : biometrics.deficit.state === 'minor' ? 'ring-amber-400/60'
+    : 'ring-emerald-400/60';
+
   const openMonthReview = () => {
     setThreadType('advice');
     setCurrentThreadId(null);
