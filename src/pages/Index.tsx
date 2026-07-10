@@ -702,7 +702,7 @@ const Index = () => {
       .filter(m => m.kind === 'missed')
       .map(m => ({ forDate: m.forDate, reason: m.reason }));
 
-    const ms = liveChatContext.monthSummary;
+    const ms = liveChatContext?.monthSummary;
     const monthLoad = computeMonthLoad({
       plannedSessions: ms?.plannedSessions ?? 0,
       completedSessions: ms?.completedSessions ?? 0,
@@ -721,20 +721,22 @@ const Index = () => {
 
   // Feed the inference results back into the AI context so the coach reasons
   // over real load, deficits, and overtraining risk instead of raw text.
-  if (liveChatContext.monthSummary) {
+  if (liveChatContext?.monthSummary) {
     liveChatContext.monthSummary.substituteLoadScore = biometrics.monthLoad.substituteLoad;
     liveChatContext.monthSummary.monthlyScore = biometrics.monthLoad.monthlyScore;
     liveChatContext.monthSummary.executionScore = biometrics.monthLoad.executionScore;
   }
-  liveChatContext.selfCorrection = {
-    state: biometrics.deficit.state,
-    consecutiveMissed: biometrics.deficit.consecutiveMissed,
-    loadDampening: biometrics.deficit.loadDampening,
-    needsReEntry: biometrics.deficit.needsReEntry,
-    message: biometrics.deficit.message,
-    overtrainingRisk: biometrics.reasons.overtrainingRisk,
-    reasonPattern: biometrics.reasons.summary,
-  };
+  if (liveChatContext) {
+    liveChatContext.selfCorrection = {
+      state: biometrics.deficit.state,
+      consecutiveMissed: biometrics.deficit.consecutiveMissed,
+      loadDampening: biometrics.deficit.loadDampening,
+      needsReEntry: biometrics.deficit.needsReEntry,
+      message: biometrics.deficit.message,
+      overtrainingRisk: biometrics.reasons.overtrainingRisk,
+      reasonPattern: biometrics.reasons.summary,
+    };
+  }
 
   const hudColor =
     biometrics.deficit.state === 'catchup' ? 'text-purple-400'
