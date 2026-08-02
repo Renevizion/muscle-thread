@@ -5,6 +5,12 @@ export interface Exercise {
   reps: string;
   rest: string;
   notes?: string;
+  /** Optional: how this movement is run (e.g. "10 sets · specialization", "rest-pause", "EMOM") */
+  style?: string;
+  /** Optional: the reason this movement is here, in one plain sentence */
+  why?: string;
+  /** Optional: a load target the coach committed to (e.g. "3 plates/side") */
+  target?: string;
 }
 
 export interface WorkoutDay {
@@ -21,7 +27,12 @@ export interface WorkoutDay {
     intensity: string;
   };
   extras?: string[];
+  /** Optional: training style for the day — e.g. "specialization", "strength", "density" */
+  style?: string;
+  /** Optional: the coach's reasoning for the day, so the lifter learns the programming */
+  why?: string;
 }
+
 
 export const workoutPlan: WorkoutDay[] = [
   {
