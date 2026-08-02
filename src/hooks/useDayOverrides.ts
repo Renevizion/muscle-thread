@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { currentWeekStart } from '@/lib/week';
 
 /**
  * Per-week, client-side day overrides:
@@ -19,10 +20,7 @@ const STORAGE_KEY = 'workout-day-overrides-v1';
 const WEEK_KEY = 'workout-day-overrides-week';
 
 function getWeekStart(): string {
-  const today = new Date();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - today.getDay() + 1);
-  return monday.toISOString().split('T')[0];
+  return currentWeekStart();
 }
 
 const empty: WeekOverrides = { swaps: {}, skipped: [], laterAt: null };

@@ -24,10 +24,8 @@ export function useWorkoutProgress() {
     const stored = localStorage.getItem(STORAGE_KEY);
     const storedWeekStart = localStorage.getItem(WEEK_START_KEY);
     
-    const today = new Date();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - today.getDay() + 1);
-    const currentWeekStart = monday.toISOString().split('T')[0];
+    const currentWeekStart_ = currentWeekStart();
+    const currentWeekStart = currentWeekStart_;
 
     // Reset progress if it's a new week
     if (storedWeekStart !== currentWeekStart) {
