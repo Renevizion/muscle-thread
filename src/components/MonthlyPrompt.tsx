@@ -122,30 +122,30 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
       .update({ end_date: format(newEndDate, 'yyyy-MM-dd') })
       .eq('id', currentPlan.id);
     
-    setShowPrompt(false);
-    setDismissed(true);
+    close('continue');
     onContinue();
   };
 
   if (!showPrompt || dismissed) return null;
 
   return (
-    <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 space-y-5 shadow-card">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 safe-bottom">
+      <div className="bg-card border border-border rounded-2xl max-w-md w-full p-5 space-y-4 shadow-card max-h-[90dvh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-fire flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-primary-foreground" />
+            <div className="w-11 h-11 rounded-full bg-gradient-fire flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="font-display font-bold text-lg">New Month Ahead!</h2>
-              <p className="text-sm text-muted-foreground">Your current plan is ending</p>
+              <h2 className="font-display font-bold text-lg leading-tight">Your plan is wrapping up</h2>
+              <p className="text-sm text-muted-foreground">Pick once — I won't ask again for this plan</p>
             </div>
           </div>
-          <button 
-            onClick={() => setDismissed(true)}
-            className="p-2 hover:bg-secondary rounded"
+          <button
+            onClick={() => close('later')}
+            aria-label="Ask me later"
+            className="p-2 hover:bg-secondary rounded-lg shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -166,7 +166,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
         <div className="space-y-2">
           <button
             onClick={() => {
-              setShowPrompt(false);
+              close('new');
               onCreateNew();
             }}
             className="w-full flex items-center gap-4 p-4 bg-gradient-fire text-primary-foreground rounded-xl text-left"
@@ -181,7 +181,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
           
           <button
             onClick={() => {
-              setShowPrompt(false);
+              close('revise');
               onRevise();
             }}
             className="w-full flex items-center gap-4 p-4 bg-secondary hover:bg-secondary/80 rounded-xl text-left transition-colors"
@@ -208,7 +208,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
           {onReview && (
             <button
               onClick={() => {
-                setShowPrompt(false);
+                close('review');
                 onReview();
               }}
               className="w-full flex items-center gap-4 p-4 bg-secondary/60 hover:bg-secondary rounded-xl text-left transition-colors"
@@ -222,6 +222,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
           )}
         </div>
       </div>
+
     </div>
   );
 }
