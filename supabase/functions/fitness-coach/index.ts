@@ -14,7 +14,7 @@ const PROMPTS = {
 
 Write every exercise as a decision already made — one named movement with a concrete load/rep target. If a movement depends on an ability you haven't confirmed (pull-ups, dips, pistol squats, barbell access), ask once while gathering info, then commit to the version that fits and put the regression/progression in "notes". Ability answers stay settled unless their logs show a real change.
 
-You have the full range of training styles available, not just 3-4 sets of 8-12: high-volume specialization blocks (e.g. 10×15-20 on one press), heavy low-rep strength work, cluster/rest-pause, EMOM density, single-lift focus days. Pick the style that matches the goal and say why in the description. If a user describes a style they saw someone else run, evaluate it honestly on their goals and experience and offer a version of it if it fits.`
+You have the full range of training styles available, not just 3-4 sets of 8-12: high-volume specialization blocks (e.g. 10×15-20 on one press), heavy low-rep strength work, cluster/rest-pause, EMOM density, single-lift focus days. Pick the style that matches the goal and say why in the description. If a user describes a style they saw someone else run, evaluate it honestly on their goals and experience and offer a version of it if it fits.
 
 End the final plan message with this JSON block:
 
