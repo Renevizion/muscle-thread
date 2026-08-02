@@ -12,21 +12,68 @@ interface MonthlyPromptProps {
   onReview?: () => void;
 }
 
+const DECISION_KEY = 'monthly-prompt-decision-v2';
+const SNOOZE_DAYS = 5;
+
+type Decision = { planId: string; endDate: string; action: string; at: number };
+
+function readDecisions(): Decision[] {
+  try {
+    const raw = localStorage.getItem(DECISION_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function recordDecision(planId: string, endDate: string, action: string) {
+  try {
+    const next = readDecisions()
+      .filter(d => !(d.planId === planId && d.endDate === endDate))
+      .slice(-20);
+    next.push({ planId, endDate, action, at: Date.now() });
+    localStorage.setItem(DECISION_KEY, JSON.stringify(next));
+  } catch { /* ignore */ }
+}
+
+/** A decision on this exact plan+end_date silences the prompt. A "later" dismiss silences it for a few days. */
+function hasDecided(planId: string, endDate: string) {
+  const d = readDecisions().find(x => x.planId === planId && x.endDate === endDate);
+  if (!d) return false;
+  if (d.action !== 'later') return true;
+  return Date.now() - d.at < SNOOZE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, onReview }: MonthlyPromptProps) {
   const { user } = useAuth();
   const [showPrompt, setShowPrompt] = useState(false);
   const [completionRate, setCompletionRate] = useState<number | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
+  const planId = currentPlan?.id ?? '';
+  const endKey = currentPlan?.end_date ?? '';
+
   useEffect(() => {
     setShowPrompt(false);
     setDismissed(false);
     setCompletionRate(null);
     checkMonthlyStatus();
-  }, [currentPlan?.id, currentPlan?.end_date, user?.id]);
+  }, [planId, endKey, user?.id]);
+
+  const close = (action: string) => {
+    recordDecision(planId, endKey, action);
+    setShowPrompt(false);
+    setDismissed(true);
+  };
 
   const checkMonthlyStatus = async () => {
     if (!currentPlan || !user) {
+      setShowPrompt(false);
+      return;
+    }
+
+    if (hasDecided(planId, endKey)) {
       setShowPrompt(false);
       return;
     }
@@ -47,6 +94,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
 
     setShowPrompt(false);
   };
+
 
   const loadCompletionRate = async () => {
     if (!user || !currentPlan) return;
