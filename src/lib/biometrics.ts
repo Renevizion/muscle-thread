@@ -116,11 +116,23 @@ export function assessDeficit(args: {
   today?: string;
 }): DeficitReport {
   const today = args.today ?? new Date().toISOString().split('T')[0];
-  const daysSince = args.lastActivityDate
-    ? Math.floor(
-        (new Date(today).getTime() - new Date(args.lastActivityDate).getTime()) / 86400000,
-      )
-    : 99;
+  // No activity on record yet (brand-new plan / fresh account) is NOT a deficit.
+  // Defaulting to a huge number here made the coach claim "you've been off 99 days".
+  if (!args.lastActivityDate) {
+    return {
+      state: args.missed.length >= 4 ? 'catchup' : args.missed.length >= 2 ? 'minor' : 'aligned',
+      consecutiveMissed: args.missed.length,
+      loadDampening: args.missed.length >= 4 ? 0.3 : args.missed.length >= 2 ? 0.1 : 0,
+      needsReEntry: args.missed.length >= 4,
+      message:
+        args.missed.length === 0
+          ? 'No sessions logged yet — nothing to catch up on.'
+          : `${args.missed.length} missed day(s) logged and no completed work yet.`,
+    };
+  }
+  const daysSince = Math.floor(
+    (new Date(today).getTime() - new Date(args.lastActivityDate).getTime()) / 86400000,
+  );
   const consecutiveMissed = Math.max(daysSince, args.missed.length);
 
   if (consecutiveMissed >= 4) {
