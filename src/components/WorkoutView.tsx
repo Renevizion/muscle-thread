@@ -2,7 +2,7 @@ import { forwardRef, ReactNode } from 'react';
 import { WorkoutDay } from '@/data/workoutPlan';
 import { ExerciseCard } from './ExerciseCard';
 import { RestTimer } from './RestTimer';
-import { Dumbbell, Wind, Moon, Flame, Droplets } from 'lucide-react';
+import { Dumbbell, Wind, Moon, Flame, Droplets, Lightbulb, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SetLog {
@@ -144,16 +144,36 @@ export const WorkoutView = forwardRef<HTMLDivElement, WorkoutViewProps>(function
           <Dumbbell className="w-6 h-6 text-primary-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-display text-xl font-bold truncate">{day.name}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-display text-xl font-bold truncate">{day.name}</h2>
+            {day.style && (
+              <span className="shrink-0 text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                {day.style}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground truncate">{day.focus}</p>
         </div>
         {headerSlot}
       </div>
 
+      {/* Why this day — progressive disclosure, collapsed by default */}
+      {day.why && (
+        <details className="mb-4 bg-gradient-card rounded-xl overflow-hidden group">
+          <summary className="flex items-center gap-2 p-3 cursor-pointer list-none text-sm text-muted-foreground">
+            <Lightbulb className="w-4 h-4 text-primary shrink-0" />
+            <span className="font-medium">Why this day</span>
+            <ChevronDown className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="px-3 pb-3 text-sm text-foreground/80 leading-relaxed">{day.why}</p>
+        </details>
+      )}
+
       {/* Rest Timer */}
       <div className="mb-4">
         <RestTimer />
       </div>
+
 
       {/* Warmup */}
       {day.warmup && (

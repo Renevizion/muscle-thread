@@ -12,21 +12,68 @@ interface MonthlyPromptProps {
   onReview?: () => void;
 }
 
+const DECISION_KEY = 'monthly-prompt-decision-v2';
+const SNOOZE_DAYS = 5;
+
+type Decision = { planId: string; endDate: string; action: string; at: number };
+
+function readDecisions(): Decision[] {
+  try {
+    const raw = localStorage.getItem(DECISION_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function recordDecision(planId: string, endDate: string, action: string) {
+  try {
+    const next = readDecisions()
+      .filter(d => !(d.planId === planId && d.endDate === endDate))
+      .slice(-20);
+    next.push({ planId, endDate, action, at: Date.now() });
+    localStorage.setItem(DECISION_KEY, JSON.stringify(next));
+  } catch { /* ignore */ }
+}
+
+/** A decision on this exact plan+end_date silences the prompt. A "later" dismiss silences it for a few days. */
+function hasDecided(planId: string, endDate: string) {
+  const d = readDecisions().find(x => x.planId === planId && x.endDate === endDate);
+  if (!d) return false;
+  if (d.action !== 'later') return true;
+  return Date.now() - d.at < SNOOZE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, onReview }: MonthlyPromptProps) {
   const { user } = useAuth();
   const [showPrompt, setShowPrompt] = useState(false);
   const [completionRate, setCompletionRate] = useState<number | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
+  const planId = currentPlan?.id ?? '';
+  const endKey = currentPlan?.end_date ?? '';
+
   useEffect(() => {
     setShowPrompt(false);
     setDismissed(false);
     setCompletionRate(null);
     checkMonthlyStatus();
-  }, [currentPlan?.id, currentPlan?.end_date, user?.id]);
+  }, [planId, endKey, user?.id]);
+
+  const close = (action: string) => {
+    recordDecision(planId, endKey, action);
+    setShowPrompt(false);
+    setDismissed(true);
+  };
 
   const checkMonthlyStatus = async () => {
     if (!currentPlan || !user) {
+      setShowPrompt(false);
+      return;
+    }
+
+    if (hasDecided(planId, endKey)) {
       setShowPrompt(false);
       return;
     }
@@ -47,6 +94,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
 
     setShowPrompt(false);
   };
+
 
   const loadCompletionRate = async () => {
     if (!user || !currentPlan) return;
@@ -74,30 +122,30 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
       .update({ end_date: format(newEndDate, 'yyyy-MM-dd') })
       .eq('id', currentPlan.id);
     
-    setShowPrompt(false);
-    setDismissed(true);
+    close('continue');
     onContinue();
   };
 
   if (!showPrompt || dismissed) return null;
 
   return (
-    <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 space-y-5 shadow-card">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 safe-bottom">
+      <div className="bg-card border border-border rounded-2xl max-w-md w-full p-5 space-y-4 shadow-card max-h-[90dvh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-fire flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-primary-foreground" />
+            <div className="w-11 h-11 rounded-full bg-gradient-fire flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="font-display font-bold text-lg">New Month Ahead!</h2>
-              <p className="text-sm text-muted-foreground">Your current plan is ending</p>
+              <h2 className="font-display font-bold text-lg leading-tight">Your plan is wrapping up</h2>
+              <p className="text-sm text-muted-foreground">Pick once — I won't ask again for this plan</p>
             </div>
           </div>
-          <button 
-            onClick={() => setDismissed(true)}
-            className="p-2 hover:bg-secondary rounded"
+          <button
+            onClick={() => close('later')}
+            aria-label="Ask me later"
+            className="p-2 hover:bg-secondary rounded-lg shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -118,7 +166,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
         <div className="space-y-2">
           <button
             onClick={() => {
-              setShowPrompt(false);
+              close('new');
               onCreateNew();
             }}
             className="w-full flex items-center gap-4 p-4 bg-gradient-fire text-primary-foreground rounded-xl text-left"
@@ -133,7 +181,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
           
           <button
             onClick={() => {
-              setShowPrompt(false);
+              close('revise');
               onRevise();
             }}
             className="w-full flex items-center gap-4 p-4 bg-secondary hover:bg-secondary/80 rounded-xl text-left transition-colors"
@@ -160,7 +208,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
           {onReview && (
             <button
               onClick={() => {
-                setShowPrompt(false);
+                close('review');
                 onReview();
               }}
               className="w-full flex items-center gap-4 p-4 bg-secondary/60 hover:bg-secondary rounded-xl text-left transition-colors"
@@ -174,6 +222,7 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
           )}
         </div>
       </div>
+
     </div>
   );
 }
