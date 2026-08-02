@@ -180,12 +180,23 @@ export function ExerciseLogModal({ exercise, isOpen, onClose, onSave, initialSet
           ))}
         </div>
 
-        <button
-          onClick={addSet}
-          className="w-full py-2 mb-4 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          + Add Set
-        </button>
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={addSet}
+            className="flex-1 py-2 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            + Add Set
+          </button>
+          {canFill && (
+            <button
+              onClick={fillRemaining}
+              className="flex-1 py-2 rounded-lg bg-secondary text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors"
+            >
+              Repeat for remaining {sets.length - filledCount}
+            </button>
+          )}
+        </div>
+
 
         <button
           onClick={handleSave}
