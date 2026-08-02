@@ -28,13 +28,13 @@ export function useWorkoutProgress() {
     const currentWeek = getCurrentWeekStart();
 
     // Reset progress if it's a new week
-    if (storedWeekStart !== currentWeekStart) {
-      localStorage.setItem(WEEK_START_KEY, currentWeekStart);
+    if (storedWeekStart !== currentWeek) {
+      localStorage.setItem(WEEK_START_KEY, currentWeek);
       localStorage.removeItem(STORAGE_KEY);
-      setWeekStart(currentWeekStart);
+      setWeekStart(currentWeek);
       setProgress({});
     } else {
-      setWeekStart(storedWeekStart || currentWeekStart);
+      setWeekStart(storedWeekStart || currentWeek);
       if (stored) {
         setProgress(JSON.parse(stored));
       }
