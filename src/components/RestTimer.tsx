@@ -90,29 +90,56 @@ export const RestTimer = forwardRef<HTMLDivElement, RestTimerProps>(function Res
 
   return (
     <div ref={ref} className="bg-gradient-card rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-muted-foreground">Rest Timer</span>
-        <div className="flex gap-1">
-          {presets.map(preset => (
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <span className="text-sm font-medium text-muted-foreground shrink-0">Rest Timer</span>
+        {editing ? (
+          <div className="flex items-center gap-1">
+            {draft.map((v, i) => (
+              <input
+                key={i}
+                type="number"
+                inputMode="numeric"
+                value={v}
+                onChange={e => setDraft(d => d.map((x, j) => (j === i ? e.target.value : x)))}
+                aria-label={`Rest preset ${i + 1} in seconds`}
+                className="w-12 px-1 py-1 text-xs rounded-md bg-secondary text-foreground text-center"
+              />
+            ))}
             <button
-              key={preset}
-              onClick={() => {
-                setInitialSeconds(preset);
-                setSeconds(preset);
-                setIsRunning(false);
-              }}
-              className={cn(
-                "px-2 py-1 text-xs rounded-md transition-colors",
-                initialSeconds === preset 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-secondary text-muted-foreground hover:text-foreground"
-              )}
+              onClick={savePresets}
+              aria-label="Save rest presets"
+              className="p-1.5 rounded-md bg-primary text-primary-foreground"
             >
-              {preset}s
+              <Check className="w-3.5 h-3.5" />
             </button>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            {presets.map(preset => (
+              <button
+                key={preset}
+                onClick={() => selectDuration(preset)}
+                className={cn(
+                  "px-2 py-1 text-xs rounded-md transition-colors",
+                  initialSeconds === preset
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {preset}s
+              </button>
+            ))}
+            <button
+              onClick={() => { setDraft(presets.map(String)); setEditing(true); }}
+              aria-label="Edit rest presets"
+              className="p-1.5 rounded-md bg-secondary text-muted-foreground hover:text-foreground"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
+
 
       <div className="flex items-center gap-4">
         {/* Timer display */}
