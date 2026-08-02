@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Zap, X, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { saveCoachNote } from '@/lib/coachNotes';
+
 
 /**
  * Floating Quick-Thought Capsule.
