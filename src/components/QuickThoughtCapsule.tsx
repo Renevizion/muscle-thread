@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Zap, X, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { saveCoachNote } from '@/lib/coachNotes';
+
 
 /**
  * Floating Quick-Thought Capsule.
@@ -25,16 +26,16 @@ export function QuickThoughtCapsule({ onSaved }: { onSaved?: () => void }) {
     const content = text.trim();
     if (!content) return;
     setSaving(true);
-    const { error } = await supabase.from('coach_notes').insert({
-      user_id: user.id, kind: 'note', content,
-    });
+    const res = await saveCoachNote(user.id, { kind: 'note', content });
     setSaving(false);
-    if (error) { toast.error('Could not save'); return; }
     setText('');
     setOpen(false);
-    toast.success('Saved to your coach');
+    toast[res.ok ? 'success' : 'message'](
+      res.ok ? 'Saved to your coach' : 'Saved offline — will sync automatically',
+    );
     onSaved?.();
   };
+
 
   return (
     <>

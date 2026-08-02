@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Lightbulb, Scale, Check, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Lightbulb, Scale, Check, TrendingUp, TrendingDown, Minus, CloudOff, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { saveCoachNote, flushOutbox, readOutbox, type PendingNote } from '@/lib/coachNotes';
+import { NotesLibrary } from './NotesLibrary';
+
 
 export interface CoachNote {
   id: string;
@@ -31,9 +34,16 @@ export function QuickCapture({ onChange }: QuickCaptureProps) {
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState<CoachNote[]>([]);
   const [weights, setWeights] = useState<CoachNote[]>([]);
+  const [pending, setPending] = useState<PendingNote[]>([]);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
+    // Replay anything that failed to reach the cloud earlier (offline phone, etc.)
+    const synced = await flushOutbox(user.id);
+    if (synced > 0) toast.success(`${synced} offline note${synced > 1 ? 's' : ''} synced`);
+    setPending(readOutbox(user.id).filter(p => p.kind === 'note'));
+
     const { data } = await supabase
       .from('coach_notes')
       .select('id, kind, content, value, unit, created_at')
@@ -47,18 +57,24 @@ export function QuickCapture({ onChange }: QuickCaptureProps) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Retry the outbox whenever the device regains connectivity.
+  useEffect(() => {
+    const onOnline = () => { load(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [load]);
+
   const saveNote = async () => {
     const text = noteText.trim();
     if (!user || !text) return;
     setSaving(true);
-    const { error } = await supabase.from('coach_notes').insert({
-      user_id: user.id, kind: 'note', content: text,
-    });
+    const res = await saveCoachNote(user.id, { kind: 'note', content: text });
     setSaving(false);
-    if (error) { toast.error('Could not save note'); return; }
     setNoteText('');
     setMode('idle');
-    toast.success('Saved for your coach');
+    toast[res.ok ? 'success' : 'message'](
+      res.ok ? 'Saved for your coach' : 'Saved offline — will sync automatically',
+    );
     await load();
     onChange?.();
   };
@@ -67,17 +83,17 @@ export function QuickCapture({ onChange }: QuickCaptureProps) {
     const num = parseFloat(weightText);
     if (!user || Number.isNaN(num) || num <= 0) { toast.error('Enter a valid weight'); return; }
     setSaving(true);
-    const { error } = await supabase.from('coach_notes').insert({
-      user_id: user.id, kind: 'weight', value: num, unit: 'lbs',
-    });
+    const res = await saveCoachNote(user.id, { kind: 'weight', value: num, unit: 'lbs' });
     setSaving(false);
-    if (error) { toast.error('Could not save weight'); return; }
     setWeightText('');
     setMode('idle');
-    toast.success('Bodyweight logged');
+    toast[res.ok ? 'success' : 'message'](
+      res.ok ? 'Bodyweight logged' : 'Saved offline — will sync automatically',
+    );
     await load();
     onChange?.();
   };
+
 
   const latestWeight = weights[0]?.value ?? null;
   const prevWeight = weights[1]?.value ?? null;
@@ -170,16 +186,44 @@ export function QuickCapture({ onChange }: QuickCaptureProps) {
         </div>
       )}
 
-      {/* Recent notes peek */}
-      {mode === 'idle' && notes.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
+      {/* Recent notes peek — tap any chip to read the full note */}
+      {mode === 'idle' && (notes.length > 0 || pending.length > 0) && (
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
+          {pending.length > 0 && (
+            <button
+              onClick={() => setLibraryOpen(true)}
+              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-orange-500/15 text-xs text-orange-400"
+            >
+              <CloudOff className="w-3 h-3" /> {pending.length} unsynced
+            </button>
+          )}
           {notes.slice(0, 4).map(n => (
-            <div key={n.id} className="shrink-0 max-w-[200px] px-2.5 py-1.5 rounded-lg bg-secondary/60 text-xs text-muted-foreground truncate">
+            <button
+              key={n.id}
+              onClick={() => setLibraryOpen(true)}
+              className="shrink-0 max-w-[200px] px-2.5 py-1.5 rounded-lg bg-secondary/60 text-xs text-muted-foreground truncate active:scale-[0.97] transition-transform"
+            >
               {n.content}
-            </div>
+            </button>
           ))}
+          <button
+            onClick={() => setLibraryOpen(true)}
+            className="shrink-0 flex items-center gap-0.5 px-2.5 py-1.5 rounded-lg bg-secondary/60 text-xs font-medium text-primary"
+          >
+            All {notes.length + pending.length} <ChevronRight className="w-3 h-3" />
+          </button>
         </div>
       )}
+
+      {libraryOpen && (
+        <NotesLibrary
+          notes={notes}
+          pending={pending}
+          onClose={() => setLibraryOpen(false)}
+          onChanged={() => { load(); onChange?.(); }}
+        />
+      )}
     </div>
+
   );
 }
