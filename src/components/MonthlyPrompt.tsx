@@ -3,6 +3,7 @@ import { Calendar, RefreshCw, ArrowRight, X, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format, endOfMonth } from 'date-fns';
+import { loadDecisions, saveDecision, isSilenced, type MonthDecisionAction } from '@/lib/planDecisions';
 
 interface MonthlyPromptProps {
   currentPlan: any;
@@ -10,39 +11,6 @@ interface MonthlyPromptProps {
   onRevise: () => void;
   onContinue: () => void;
   onReview?: () => void;
-}
-
-const DECISION_KEY = 'monthly-prompt-decision-v2';
-const SNOOZE_DAYS = 5;
-
-type Decision = { planId: string; endDate: string; action: string; at: number };
-
-function readDecisions(): Decision[] {
-  try {
-    const raw = localStorage.getItem(DECISION_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function recordDecision(planId: string, endDate: string, action: string) {
-  try {
-    const next = readDecisions()
-      .filter(d => !(d.planId === planId && d.endDate === endDate))
-      .slice(-20);
-    next.push({ planId, endDate, action, at: Date.now() });
-    localStorage.setItem(DECISION_KEY, JSON.stringify(next));
-  } catch { /* ignore */ }
-}
-
-/** A decision on this exact plan+end_date silences the prompt. A "later" dismiss silences it for a few days. */
-function hasDecided(planId: string, endDate: string) {
-  const d = readDecisions().find(x => x.planId === planId && x.endDate === endDate);
-  if (!d) return false;
-  if (d.action !== 'later') return true;
-  return Date.now() - d.at < SNOOZE_DAYS * 24 * 60 * 60 * 1000;
 }
 
 export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, onReview }: MonthlyPromptProps) {
@@ -55,45 +23,42 @@ export function MonthlyPrompt({ currentPlan, onCreateNew, onRevise, onContinue, 
   const endKey = currentPlan?.end_date ?? '';
 
   useEffect(() => {
-    setShowPrompt(false);
-    setDismissed(false);
-    setCompletionRate(null);
-    checkMonthlyStatus();
+    let cancelled = false;
+
+    const run = async () => {
+      setShowPrompt(false);
+      setDismissed(false);
+      setCompletionRate(null);
+
+      if (!currentPlan || !user) return;
+
+      // Durable, account-wide check first — a decision made on any device silences this.
+      const decisions = await loadDecisions(user.id);
+      if (cancelled) return;
+      if (isSilenced(decisions, planId, endKey)) return;
+
+      const endDate = currentPlan.end_date ? new Date(currentPlan.end_date) : null;
+      if (!endDate) return;
+
+      const daysUntilEnd = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      if (daysUntilEnd > 3) return;
+
+      await loadCompletionRate();
+      if (cancelled) return;
+      setShowPrompt(true);
+    };
+
+    run();
+    return () => { cancelled = true; };
   }, [planId, endKey, user?.id]);
 
-  const close = (action: string) => {
-    recordDecision(planId, endKey, action);
+  const close = (action: MonthDecisionAction) => {
+    // Optimistic: hide immediately, persist in the background.
     setShowPrompt(false);
     setDismissed(true);
+    void saveDecision(user?.id, planId, endKey, action);
   };
 
-  const checkMonthlyStatus = async () => {
-    if (!currentPlan || !user) {
-      setShowPrompt(false);
-      return;
-    }
-
-    if (hasDecided(planId, endKey)) {
-      setShowPrompt(false);
-      return;
-    }
-
-    // Check if plan has ended or it's a new month
-    const endDate = currentPlan.end_date ? new Date(currentPlan.end_date) : null;
-    const now = new Date();
-    
-    // Show prompt if plan has ended or we're in the last 3 days of the plan
-    if (endDate) {
-      const daysUntilEnd = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysUntilEnd <= 3) {
-        await loadCompletionRate();
-        setShowPrompt(true);
-        return;
-      }
-    }
-
-    setShowPrompt(false);
-  };
 
 
   const loadCompletionRate = async () => {
