@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { currentWeekStart as getCurrentWeekStart } from '@/lib/week';
 
 interface ExerciseProgress {
   completed: boolean;
@@ -24,8 +25,7 @@ export function useWorkoutProgress() {
     const stored = localStorage.getItem(STORAGE_KEY);
     const storedWeekStart = localStorage.getItem(WEEK_START_KEY);
     
-    const currentWeekStart_ = currentWeekStart();
-    const currentWeekStart = currentWeekStart_;
+    const currentWeek = getCurrentWeekStart();
 
     // Reset progress if it's a new week
     if (storedWeekStart !== currentWeekStart) {
