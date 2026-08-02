@@ -66,10 +66,19 @@ export function ExerciseLogModal({ exercise, isOpen, onClose, onSave, initialSet
     setSets(prev => prev.map((s, i) => i === index ? { ...s, [field]: Math.max(0, value) } : s));
   };
 
-  const addSet = () => setSets(prev => [...prev, { reps: 0, weight: 0 }]);
+  const addSet = () => setSets(prev => [...prev, { ...(prev[prev.length - 1] ?? { reps: 0, weight: 0 }) }]);
   const removeSet = (index: number) => {
     if (sets.length <= 1) return;
     setSets(prev => prev.filter((_, i) => i !== index));
+  };
+
+  /** High-volume days (10×15-20) are miserable to type out — copy the last filled set forward. */
+  const fillRemaining = () => {
+    setSets(prev => {
+      const lastFilled = [...prev].reverse().find(s => s.reps > 0 || s.weight > 0);
+      if (!lastFilled) return prev;
+      return prev.map(s => (s.reps > 0 || s.weight > 0) ? s : { ...lastFilled });
+    });
   };
 
   const handleSave = () => {
@@ -82,20 +91,27 @@ export function ExerciseLogModal({ exercise, isOpen, onClose, onSave, initialSet
   };
 
   const targetReps = exercise.reps;
+  const totalVolume = sets.reduce((sum, s) => sum + s.reps * s.weight, 0);
+  const filledCount = sets.filter(s => s.reps > 0 || s.weight > 0).length;
+  const canFill = filledCount > 0 && filledCount < sets.length;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-background rounded-t-2xl sm:rounded-2xl p-5 pb-8 animate-slide-up max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-display font-bold text-lg">{exercise.name}</h3>
-            <p className="text-sm text-muted-foreground">Target: {exercise.sets} × {targetReps}</p>
+      <div className="relative w-full max-w-md bg-background rounded-t-2xl sm:rounded-2xl p-5 pb-8 animate-slide-up max-h-[85dvh] overflow-y-auto">
+        <div className="sticky -top-5 -mx-5 px-5 pt-1 pb-3 bg-background z-10 flex items-center justify-between">
+          <div className="min-w-0">
+            <h3 className="font-display font-bold text-lg truncate">{exercise.name}</h3>
+            <p className="text-sm text-muted-foreground">
+              Target: {exercise.sets} × {targetReps}
+              {totalVolume > 0 && <span className="text-primary"> · {totalVolume.toLocaleString()} lbs volume</span>}
+            </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
+
 
         {isPastDay && (
           <div className="mb-3 flex items-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30 text-xs text-primary">
