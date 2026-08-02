@@ -16,6 +16,7 @@ import { QuickThoughtCapsule } from '@/components/QuickThoughtCapsule';
 import { computeMonthLoad, assessDeficit, classifyReasons, type Intensity } from '@/lib/biometrics';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useDayOverrides } from '@/hooks/useDayOverrides';
+import { mondayOf } from '@/lib/week';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp, Camera, Clock } from 'lucide-react';
@@ -132,6 +133,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<'workout' | 'progress' | 'photos'>('workout');
   const [exerciseLogs, setExerciseLogs] = useState<Record<string, { reps: number; weight: number }[]>>({});
   const [monthSubs, setMonthSubs] = useState<Array<{ activity: string; durationMin: number; intensity: string; reason?: string; forDate: string; note?: string; kind: 'substitute' | 'missed' }>>([]);
+  /** yyyy-mm-dd of the most recent real (non-substitute) logged set. */
+  const [lastRealLogDate, setLastRealLogDate] = useState<string | null>(null);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
   const [coachNotes, setCoachNotes] = useState<Array<{ content: string; date: string }>>([]);
   const [weightLog, setWeightLog] = useState<Array<{ value: number; date: string }>>([]);
@@ -428,9 +431,12 @@ const Index = () => {
       // Take the newest entry per (workout_day, exercise_name)
       const byKey: Record<string, { reps: number; weight: number }[]> = {};
       const seen = new Set<string>();
+      let newestReal: string | null = null;
       for (const row of data) {
         // Skip substitute / missed marker rows — they're handled separately.
         if (row.exercise_name?.startsWith('[SUB]') || row.exercise_name?.startsWith('[MISSED]')) continue;
+        const day = row.logged_at?.split('T')[0] ?? null;
+        if (day && (!newestReal || day > newestReal)) newestReal = day;
         const key = `${row.workout_day}:${row.exercise_name}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -443,6 +449,7 @@ const Index = () => {
         }));
       }
       setExerciseLogs(byKey);
+      setLastRealLogDate(newestReal);
     };
     loadLogs();
   }, [user, activePlan]);
@@ -710,9 +717,12 @@ const Index = () => {
       missed,
     });
 
-    const lastActivityDate = subs.length
-      ? subs.map(s => s.forDate).sort().slice(-1)[0]
-      : null;
+    // Last real activity = the most recent of (logged workout sets, catch-up substitute).
+    // Only looking at substitutes made the coach think an actively-training user had
+    // been off for months.
+    const subLast = subs.length ? subs.map(s => s.forDate).sort().slice(-1)[0] : null;
+    const lastActivityDate =
+      [subLast, lastRealLogDate].filter(Boolean).sort().slice(-1)[0] ?? null;
     const deficit = assessDeficit({ lastActivityDate, missed });
     const reasons = classifyReasons([...subs.map(s => s.reason), ...missed.map(m => m.reason)]);
 
@@ -929,8 +939,7 @@ const Index = () => {
                   onLogExercise={(exerciseName, sets) => {
                     // If logging a past day, stamp logged_at to that day's date this week.
                     if (selectedDay !== todayIndex && selectedDay < todayIndex) {
-                      const monday = new Date();
-                      monday.setDate(monday.getDate() - monday.getDay() + 1);
+                      const monday = mondayOf();
                       const target = new Date(monday);
                       target.setDate(monday.getDate() + (selectedDay - 1));
                       handleLogExercise(currentWorkout.name, exerciseName, sets, target.toISOString());
