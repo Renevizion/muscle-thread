@@ -68,17 +68,30 @@ export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onTog
           </button>
 
           <div className="flex-1 min-w-0">
-            <h3 className={cn(
-              "font-display font-semibold text-foreground",
-              isComplete && "line-through opacity-70"
-            )}>
-              {exercise.name}
-            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className={cn(
+                "font-display font-semibold text-foreground",
+                isComplete && "line-through opacity-70"
+              )}>
+                {exercise.name}
+              </h3>
+              {exercise.style && (
+                <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                  {exercise.style}
+                </span>
+              )}
+            </div>
             
-            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
               <span>{exercise.sets} × {exercise.reps}</span>
               <span className="text-xs">•</span>
               <span>Rest {exercise.rest}</span>
+              {exercise.target && (
+                <>
+                  <span className="text-xs">•</span>
+                  <span className="text-primary/90">{exercise.target}</span>
+                </>
+              )}
             </div>
 
             {/* Show logged data summary */}
@@ -97,7 +110,17 @@ export function ExerciseCard({ exercise, index, setsCompleted, isComplete, onTog
                 {exercise.notes}
               </p>
             )}
+
+            {exercise.why && (
+              <details className="mt-2 group">
+                <summary className="text-xs text-muted-foreground cursor-pointer list-none underline decoration-dotted underline-offset-2">
+                  Why this movement
+                </summary>
+                <p className="mt-1 text-xs text-foreground/70 leading-relaxed">{exercise.why}</p>
+              </details>
+            )}
           </div>
+
 
           {/* Log button — always available so users can log past sessions too */}
           <button
