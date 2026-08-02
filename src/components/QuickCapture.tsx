@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Lightbulb, Scale, Check, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Lightbulb, Scale, Check, TrendingUp, TrendingDown, Minus, CloudOff, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { saveCoachNote, flushOutbox, readOutbox, type PendingNote } from '@/lib/coachNotes';
+import { NotesLibrary } from './NotesLibrary';
+
 
 export interface CoachNote {
   id: string;
