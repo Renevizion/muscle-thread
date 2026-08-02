@@ -34,9 +34,16 @@ export function QuickCapture({ onChange }: QuickCaptureProps) {
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState<CoachNote[]>([]);
   const [weights, setWeights] = useState<CoachNote[]>([]);
+  const [pending, setPending] = useState<PendingNote[]>([]);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
+    // Replay anything that failed to reach the cloud earlier (offline phone, etc.)
+    const synced = await flushOutbox(user.id);
+    if (synced > 0) toast.success(`${synced} offline note${synced > 1 ? 's' : ''} synced`);
+    setPending(readOutbox(user.id).filter(p => p.kind === 'note'));
+
     const { data } = await supabase
       .from('coach_notes')
       .select('id, kind, content, value, unit, created_at')
@@ -50,18 +57,24 @@ export function QuickCapture({ onChange }: QuickCaptureProps) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Retry the outbox whenever the device regains connectivity.
+  useEffect(() => {
+    const onOnline = () => { load(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [load]);
+
   const saveNote = async () => {
     const text = noteText.trim();
     if (!user || !text) return;
     setSaving(true);
-    const { error } = await supabase.from('coach_notes').insert({
-      user_id: user.id, kind: 'note', content: text,
-    });
+    const res = await saveCoachNote(user.id, { kind: 'note', content: text });
     setSaving(false);
-    if (error) { toast.error('Could not save note'); return; }
     setNoteText('');
     setMode('idle');
-    toast.success('Saved for your coach');
+    toast[res.ok ? 'success' : 'message'](
+      res.ok ? 'Saved for your coach' : 'Saved offline — will sync automatically',
+    );
     await load();
     onChange?.();
   };
@@ -70,17 +83,17 @@ export function QuickCapture({ onChange }: QuickCaptureProps) {
     const num = parseFloat(weightText);
     if (!user || Number.isNaN(num) || num <= 0) { toast.error('Enter a valid weight'); return; }
     setSaving(true);
-    const { error } = await supabase.from('coach_notes').insert({
-      user_id: user.id, kind: 'weight', value: num, unit: 'lbs',
-    });
+    const res = await saveCoachNote(user.id, { kind: 'weight', value: num, unit: 'lbs' });
     setSaving(false);
-    if (error) { toast.error('Could not save weight'); return; }
     setWeightText('');
     setMode('idle');
-    toast.success('Bodyweight logged');
+    toast[res.ok ? 'success' : 'message'](
+      res.ok ? 'Bodyweight logged' : 'Saved offline — will sync automatically',
+    );
     await load();
     onChange?.();
   };
+
 
   const latestWeight = weights[0]?.value ?? null;
   const prevWeight = weights[1]?.value ?? null;
