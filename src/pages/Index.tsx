@@ -16,6 +16,7 @@ import { QuickThoughtCapsule } from '@/components/QuickThoughtCapsule';
 import { computeMonthLoad, assessDeficit, classifyReasons, type Intensity } from '@/lib/biometrics';
 import { useWorkoutProgress } from '@/hooks/useWorkoutProgress';
 import { useDayOverrides } from '@/hooks/useDayOverrides';
+import { mondayOf } from '@/lib/week';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Flame, MessageSquarePlus, X, Dumbbell, LogOut, Menu, TrendingUp, Camera, Clock } from 'lucide-react';
@@ -430,9 +431,12 @@ const Index = () => {
       // Take the newest entry per (workout_day, exercise_name)
       const byKey: Record<string, { reps: number; weight: number }[]> = {};
       const seen = new Set<string>();
+      let newestReal: string | null = null;
       for (const row of data) {
         // Skip substitute / missed marker rows — they're handled separately.
         if (row.exercise_name?.startsWith('[SUB]') || row.exercise_name?.startsWith('[MISSED]')) continue;
+        const day = row.logged_at?.split('T')[0] ?? null;
+        if (day && (!newestReal || day > newestReal)) newestReal = day;
         const key = `${row.workout_day}:${row.exercise_name}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -445,6 +449,7 @@ const Index = () => {
         }));
       }
       setExerciseLogs(byKey);
+      setLastRealLogDate(newestReal);
     };
     loadLogs();
   }, [user, activePlan]);
