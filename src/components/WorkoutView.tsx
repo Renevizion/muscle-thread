@@ -2,7 +2,7 @@ import { forwardRef, ReactNode } from 'react';
 import { WorkoutDay } from '@/data/workoutPlan';
 import { ExerciseCard } from './ExerciseCard';
 import { RestTimer } from './RestTimer';
-import { Dumbbell, Wind, Moon, Flame, Droplets } from 'lucide-react';
+import { Dumbbell, Wind, Moon, Flame, Droplets, Lightbulb, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SetLog {
